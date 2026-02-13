@@ -114,5 +114,4 @@ class MatGLSite(BaseDescriber):
 
         if isinstance(self.return_type, dict):
             return atom_fea_dict
-        print("debug by kenko", atom_fea_dict.values())
         return pd.DataFrame(np.concatenate(list(atom_fea_dict.values()), axis=1))
