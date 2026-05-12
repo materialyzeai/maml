@@ -16,7 +16,7 @@ authors = [
 ]
 description = "MAterials Machine Learning (maml) is a machine learning library for materials science."
 readme = "README.md"
-requires-python = ">=3.10"
+requires-python = ">=3.11"
 keywords = [
     "materials",
     "interatomic potential",
@@ -34,8 +34,8 @@ classifiers = [
     "Intended Audience :: Science/Research",
     "License :: OSI Approved :: BSD License",
     "Operating System :: OS Independent",
-    "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3",
     "Topic :: Scientific/Engineering :: Chemistry",
     "Topic :: Scientific/Engineering :: Information Analysis",
@@ -48,7 +48,7 @@ dependencies = [
     "pymatgen",
     "mp-api",
     "scikit-learn>=1.6.1",
-    "matgl"
+    "matgl[dgl]>=3.0.3"
 ]
 version = "2025.4.3"
 
@@ -64,7 +64,7 @@ dev = [
     "pytest>=8.3.5",
     "pytest-cov>=6.0.0",
     "tensorflow>=2.18.1",
-    "matgl>=1.2.5",
+    "matgl[dgl]>=3.0.3",
     "pre-commit>=4.2.0",
 ]
 lint = [

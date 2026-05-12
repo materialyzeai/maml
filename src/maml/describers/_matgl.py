@@ -12,7 +12,10 @@ from maml.base import BaseDescriber, describer_type
 if TYPE_CHECKING:
     from pymatgen.core import Molecule, Structure
 
-DEFAULT_MODEL = "M3GNet-MP-2018.6.1-Eform"
+# M3GNet is a DGL-based model; matgl>=3 requires the backend to be set explicitly.
+matgl.set_backend("DGL")
+
+DEFAULT_MODEL = "M3GNet-Eform-MP-2018.6.1"
 
 
 @describer_type("structure")
