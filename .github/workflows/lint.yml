@@ -19,13 +19,8 @@ jobs:
         enable-cache: true
         cache-dependency-glob: "uv.lock"
     - name: Install dependencies
-      # dgl 2.2.0 (pinned in uv.lock via matgl[dgl]) has no Linux wheel on PyPI, so we
-      # create the venv, install dgl 2.4.0 from the DGL wheel index, then sync the rest
-      # with --no-install-package dgl --inexact so uv leaves the pre-installed dgl alone.
       run: |
-        uv venv
-        uv pip install dgl==2.4.0 -f https://data.dgl.ai/wheels/torch-2.4/repo.html
-        uv sync --group lint --no-install-package dgl --inexact
+        uv sync --group lint
 
     - name: ruff
       run: |
