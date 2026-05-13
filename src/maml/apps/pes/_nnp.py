@@ -520,7 +520,7 @@ class NNPotential(LammpsPotential):
             lines = f.readlines()
         df = pd.DataFrame([line.split() for line in lines if "#" not in line])
         self.elements = sorted(
-            (element for element in np.ravel(df[df[0] == "elements"])[1:] if element is not None),
+            (element for element in np.ravel(df[df[0] == "elements"])[1:] if pd.notna(element)),
             key=Element,
         )
 
