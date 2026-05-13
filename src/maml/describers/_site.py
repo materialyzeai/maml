@@ -26,9 +26,7 @@ __all__ = [
 ]
 
 
-logging.basicConfig()
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.INFO)
 
 
 @describer_type("site")
@@ -399,11 +397,11 @@ class SiteElementProperty(BaseDescriber):
 
     @staticmethod
     def _get_keys(c: Composition) -> tuple[list[int], list[float]]:
-        d = {str(i): j for i, j in c._data.items()}
-        str_z = {str(i): i.Z for i in c.elements}
-        elements = list(d.keys())
-        z_values: list[int] = [str_z[i] for i in elements]
-        weights: list[float] = [d[i] for i in elements]
+        z_values: list[int] = []
+        weights: list[float] = []
+        for sp, amount in c.items():
+            z_values.append(sp.Z)
+            weights.append(amount)
         return z_values, weights
 
     def transform_one(
@@ -420,12 +418,11 @@ class SiteElementProperty(BaseDescriber):
             features array
         """
         if isinstance(obj, Structure | Molecule):
-            keys = []
-            weights = []
-            for i in obj:
-                d = i.species._data
-                for k, w in d.items():
-                    keys.append(k.Z)
+            keys: list[int] = []
+            weights: list[float] = []
+            for site in obj:
+                for sp, w in site.species.items():
+                    keys.append(sp.Z)
                     weights.append(w)
         else:
             comp = to_composition(obj)

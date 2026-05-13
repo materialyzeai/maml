@@ -128,8 +128,11 @@ class BaseDescriber(BaseEstimator, TransformerMixin, MSONable, metaclass=abc.ABC
         return batched_features if multi_output else batched_features[0]
 
     def _is_multi_output(self) -> bool:
-        tags = self._get_tags()
-        return tags["multioutput"]  # this is from BaseEstimator
+        # sklearn >= 1.6 replaced the private ``_get_tags`` dict API with
+        # ``__sklearn_tags__()``, which returns a ``Tags`` dataclass whose
+        # ``target_tags.multi_output`` flag is the modern equivalent of the
+        # old ``tags["multioutput"]`` lookup.
+        return self.__sklearn_tags__().target_tags.multi_output
 
     def clear_cache(self):
         """Clear cache."""

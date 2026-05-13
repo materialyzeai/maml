@@ -1,3 +1,5 @@
+"""MatGL-based describers."""
+
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
@@ -18,6 +20,12 @@ matgl.set_backend("DGL")
 DEFAULT_MODEL = "M3GNet-Eform-MP-2018.6.1"
 
 
+def _load_matgl_model(model_path: str | None):
+    """Load a MatGL model, defaulting to the bundled M3GNet formation energy model."""
+    path = model_path if model_path else DEFAULT_MODEL
+    return matgl.load_model(path).model, path
+
+
 @describer_type("structure")
 class MatGLStructure(BaseDescriber):
     """Use M3GNet pre-trained models as featurizer to get Structural features."""
@@ -28,7 +36,6 @@ class MatGLStructure(BaseDescriber):
         **kwargs,
     ):
         """
-
         Args:
             model_path (str): m3gnet models path. If no path is provided,
                 the models will be M3GNet formation energy model on MatGL repo:
@@ -37,12 +44,7 @@ class MatGLStructure(BaseDescriber):
                 https://doi.org/10.1038/s43588-022-00349-3.
             **kwargs: Pass through to BaseDescriber.
         """
-        if model_path:
-            self.describer_model = matgl.load_model(model_path).model
-            self.model_path = model_path
-        else:
-            self.describer_model = matgl.load_model(DEFAULT_MODEL).model
-            self.model_path = DEFAULT_MODEL
+        self.describer_model, self.model_path = _load_matgl_model(model_path)
         super().__init__(**kwargs)
 
     def transform_one(self, structure: Structure | Molecule):
@@ -65,12 +67,11 @@ class MatGLSite(BaseDescriber):
     def __init__(
         self,
         model_path: str | None = None,
-        output_layers: list | None = None,
-        return_type: list | dict = pd.DataFrame,
+        output_layers: list[str] | None = None,
+        return_type: type | dict = pd.DataFrame,
         **kwargs,
     ):
         """
-
         Args:
             model_path (str): m3gnet models path. If no path is provided,
                 the models will be M3GNet formation energy model on MatGL repo:
@@ -82,14 +83,10 @@ class MatGLSite(BaseDescriber):
                 "gc_1" layer are returned.
             return_type: The data type of the returned the atom features. By default, atom features in different
                 output_layers are concatenated to one vector per atom, and a dataframe of vectors are returned.
+                Pass an instance of ``dict`` to receive a per-layer dictionary instead.
             **kwargs: Pass through to BaseDescriber. E.g., feature_batch="pandas_concat" is very useful (see test).
         """
-        if model_path:
-            self.describer_model = matgl.load_model(model_path).model
-            self.model_path = model_path
-        else:
-            self.describer_model = matgl.load_model(DEFAULT_MODEL).model
-            self.model_path = DEFAULT_MODEL
+        self.describer_model, self.model_path = _load_matgl_model(model_path)
 
         allowed_output_layers = ["embedding"] + [f"gc_{i + 1}" for i in range(self.describer_model.n_blocks)]
         if output_layers is None:
@@ -102,7 +99,8 @@ class MatGLSite(BaseDescriber):
 
     def transform_one(self, structure: Structure | Molecule):
         """
-        Transform structure/molecule objects into atom features
+        Transform structure/molecule objects into atom features.
+
         Args:
             structure (Structure/Molecule): target object structure or molecule
         Returns: M3GNet node features as atom features.
@@ -111,9 +109,9 @@ class MatGLSite(BaseDescriber):
         result_dict = self.describer_model.predict_structure(
             structure, output_layers=self.output_layers, return_features=True
         )
-        atom_fea_dict = {}
-        for layer in self.output_layers:
-            atom_fea_dict[layer] = result_dict[layer]["node_feat"].detach().cpu().numpy()
+        atom_fea_dict = {
+            layer: result_dict[layer]["node_feat"].detach().cpu().numpy() for layer in self.output_layers
+        }
 
         if isinstance(self.return_type, dict):
             return atom_fea_dict

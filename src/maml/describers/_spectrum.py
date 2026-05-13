@@ -1,1 +1,0 @@
-"""Spectrum describers."""

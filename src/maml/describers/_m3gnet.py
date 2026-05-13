@@ -1,3 +1,5 @@
+"""M3GNet-based describers (legacy TF backend)."""
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -14,6 +16,27 @@ if TYPE_CHECKING:
 DEFAULT_MODEL = Path(__file__).parent / "data/m3gnet_models/matbench_mp_e_form/0/m3gnet/"
 
 
+def _load_m3gnet_model(model_path: str | None):
+    """Load an M3GNet model from the given path, falling back to the bundled default."""
+    from m3gnet.models import M3GNet
+
+    path = model_path if model_path else str(DEFAULT_MODEL)
+    return M3GNet.from_dir(path), path
+
+
+def _compute_graph(describer_model, structure):
+    """Run the shared M3GNet graph -> features pipeline up to the per-block layers."""
+    from m3gnet.graph import Index, tf_compute_distance_angle
+    from m3gnet.layers import polynomial
+
+    graph = describer_model.graph_converter.convert(structure).as_list()
+    graph = tf_compute_distance_angle(graph)
+    three_basis = describer_model.basis_expansion(graph)
+    three_cutoff = polynomial(graph[Index.BONDS], describer_model.threebody_cutoff)
+    g = describer_model.featurizer(graph)
+    return g, three_basis, three_cutoff
+
+
 @describer_type("structure")
 class M3GNetStructure(BaseDescriber):
     """Use M3GNet pre-trained models as featurizer to get Structural features."""
@@ -24,7 +47,6 @@ class M3GNetStructure(BaseDescriber):
         **kwargs,
     ):
         """
-
         Args:
             model_path (str): m3gnet models path. If no path is provided,
                 the models will be M3GNet formation energy model on figshare:
@@ -33,14 +55,7 @@ class M3GNetStructure(BaseDescriber):
                 https://doi.org/10.1038/s43588-022-00349-3.
             **kwargs: Pass through to BaseDescriber.
         """
-        from m3gnet.models import M3GNet
-
-        if model_path:
-            self.describer_model = M3GNet.from_dir(model_path)
-            self.model_path = model_path
-        else:
-            self.describer_model = M3GNet.from_dir(DEFAULT_MODEL)
-            self.model_path = str(DEFAULT_MODEL)
+        self.describer_model, self.model_path = _load_m3gnet_model(model_path)
         super().__init__(**kwargs)
 
     def transform_one(self, structure: Structure | Molecule):
@@ -52,14 +67,7 @@ class M3GNetStructure(BaseDescriber):
         Returns: M3GNet readout layer output as structural features.
 
         """
-        from m3gnet.graph import Index, tf_compute_distance_angle
-        from m3gnet.layers import polynomial
-
-        graph = self.describer_model.graph_converter.convert(structure).as_list()
-        graph = tf_compute_distance_angle(graph)
-        three_basis = self.describer_model.basis_expansion(graph)
-        three_cutoff = polynomial(graph[Index.BONDS], self.describer_model.threebody_cutoff)
-        g = self.describer_model.featurizer(graph)
+        g, three_basis, three_cutoff = _compute_graph(self.describer_model, structure)
         g = self.describer_model.feature_adjust(g)
         for i in range(self.describer_model.n_blocks):
             g = self.describer_model.three_interactions[i](g, three_basis, three_cutoff)
@@ -75,12 +83,11 @@ class M3GNetSite(BaseDescriber):
     def __init__(
         self,
         model_path: str | None = None,
-        output_layers: list | None = None,
-        return_type: list | dict = pd.DataFrame,
+        output_layers: list[str] | None = None,
+        return_type: type | dict = pd.DataFrame,
         **kwargs,
     ):
         """
-
         Args:
             model_path (str): m3gnet models path. If no path is provided,
                 the models will be M3GNet formation energy model on figshare:
@@ -92,16 +99,11 @@ class M3GNetSite(BaseDescriber):
                 "gc_1" layer are returned.
             return_type: The data type of the returned the atom features. By default, atom features in different
                 output_layers are concatenated to one vector per atom, and a dataframe of vectors are returned.
+                Pass an instance of ``dict`` to receive a per-layer dictionary instead.
             **kwargs: Pass through to BaseDescriber. E.g., feature_batch="pandas_concat" is very useful (see test).
         """
-        from m3gnet.models import M3GNet
+        self.describer_model, self.model_path = _load_m3gnet_model(model_path)
 
-        if model_path:
-            self.describer_model = M3GNet.from_dir(model_path)
-            self.model_path = model_path
-        else:
-            self.describer_model = M3GNet.from_dir(DEFAULT_MODEL)
-            self.model_path = str(DEFAULT_MODEL)
         allowed_output_layers = ["embedding"] + [f"gc_{i + 1}" for i in range(self.describer_model.n_blocks)]
         if output_layers is None:
             output_layers = ["gc_1"]
@@ -113,21 +115,17 @@ class M3GNetSite(BaseDescriber):
 
     def transform_one(self, structure: Structure | Molecule):
         """
-        Transform structure/molecule objects into atom features
+        Transform structure/molecule objects into atom features.
+
         Args:
             structure (Structure/Molecule): target object structure or molecule
         Returns: M3GNet node features as atom features.
 
         """
-        from m3gnet.graph import Index, tf_compute_distance_angle
-        from m3gnet.layers import polynomial
+        from m3gnet.graph import Index
 
-        graph = self.describer_model.graph_converter.convert(structure).as_list()
-        graph = tf_compute_distance_angle(graph)
-        three_basis = self.describer_model.basis_expansion(graph)
-        three_cutoff = polynomial(graph[Index.BONDS], self.describer_model.threebody_cutoff)
-        g = self.describer_model.featurizer(graph)
-        atom_fea = {"embedding": g[Index.ATOMS]}
+        g, three_basis, three_cutoff = _compute_graph(self.describer_model, structure)
+        atom_fea: dict = {"embedding": g[Index.ATOMS]}
         g = self.describer_model.feature_adjust(g)
         for i in range(self.describer_model.n_blocks):
             g = self.describer_model.three_interactions[i](g, three_basis, three_cutoff)

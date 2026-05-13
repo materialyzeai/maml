@@ -14,9 +14,7 @@ from maml.base import BaseDescriber, describer_type
 if TYPE_CHECKING:
     from pymatgen.core import Molecule, Structure
 
-logging.basicConfig()
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.INFO)
 
 
 __all__ = [
@@ -187,7 +185,7 @@ class CoulombMatrix(BaseDescriber):
         super().__init__(**kwargs)
 
     @staticmethod
-    def _get_columb_mat(s: Molecule | Structure) -> np.ndarray:
+    def _get_coulomb_mat(s: Molecule | Structure) -> np.ndarray:
         """
         Args:
             s (Molecule/Structure): input Molecule or Structure. Structure
@@ -199,7 +197,7 @@ class CoulombMatrix(BaseDescriber):
         """
         dis = s.distance_matrix
         np.fill_diagonal(dis, np.inf)  # avoid dividing by zero
-        zs = np.array([i.specie.Z for i in s])
+        zs = np.array([site.specie.Z for site in s])
         z_matrix = zs[:, None] * zs[None, :]
         z_diag = 0.5 * zs**2.4
         c = z_matrix / dis
@@ -215,7 +213,7 @@ class CoulombMatrix(BaseDescriber):
             Coulomb matrix of the structure.
 
         """
-        c = self._get_columb_mat(s)
+        c = self._get_coulomb_mat(s)
         num_sites = c.shape[0]
         if self.max_atoms is not None and self.max_atoms > num_sites:
             padding = self.max_atoms - num_sites
@@ -285,7 +283,7 @@ class RandomizedCoulombMatrix(CoulombMatrix):
         """
         c = self.get_coulomb_mat(s)
         row_norms = np.linalg.norm(c, axis=1)
-        rng = np.random.RandomState(self.random_seed)  # pylint: disable=E1101
+        rng = np.random.default_rng(self.random_seed)
         e = rng.normal(size=row_norms.size)
         p = np.argsort(row_norms + e)
         c = c[p][:, p]
@@ -403,7 +401,7 @@ class CoulombEigenSpectrum(BaseDescriber):
         Returns: np.ndarray the eigen value vectors of Coulob matrix
 
         """
-        c_mat = CoulombMatrix._get_columb_mat(mol)
+        c_mat = CoulombMatrix._get_coulomb_mat(mol)
         eig_vals = np.linalg.eigvals(c_mat)
         eig_vals = np.abs(eig_vals)
 

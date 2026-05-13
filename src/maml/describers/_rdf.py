@@ -61,8 +61,7 @@ class RadialDistributionFunction:
         density = self._get_specie_density(structure)
 
         # return full rdf information for site
-
-        rdfs: list[dict] = [{}] * len(structure)
+        rdfs: list[dict] = [{} for _ in range(len(structure))]
         for i, neighbors in enumerate(pair_distances):
             if len(neighbors["neighbors"]) == 0:
                 continue
@@ -104,7 +103,7 @@ class RadialDistributionFunction:
         """
         all_species = list({str(i.specie) for i in structure.sites})
         density = self._get_specie_density(structure)
-        n_atoms = structure.composition.to_data_dict["unit_cell_composition"]
+        n_atoms = structure.composition.as_dict()
         if ref_species is None:
             ref_species = all_species
         if species is None:
@@ -144,7 +143,7 @@ class RadialDistributionFunction:
         """
         _, rdfs = self.get_site_rdf(structure)
         density = self._get_specie_density(structure)
-        cns: list[dict] = [{}] * len(structure)
+        cns: list[dict] = [{} for _ in range(len(structure))]
         for i, rdf in enumerate(rdfs):
             if len(rdf) == 0:
                 continue
@@ -179,18 +178,17 @@ class RadialDistributionFunction:
         _, rdf = self.get_species_rdf(structure=structure, ref_species=ref_species, species=species)
 
         density = self._get_specie_density(structure)
-        n_atoms = structure.composition.to_data_dict["unit_cell_composition"]
+        n_atoms = structure.composition.as_dict()
         total_density = sum(density[i] for i in species)
         total_atoms = sum(n_atoms[i] for i in ref_species)
         return self.r, np.cumsum(rdf * total_density * 4.0 * np.pi * self.r**2 * self.dr * total_atoms)
 
     @staticmethod
-    def _get_specie_density(structure: Structure):
-        n_atoms = structure.composition.to_data_dict["unit_cell_composition"]
-        density = {}
-        for i, j in n_atoms.items():
-            density[i] = j / structure.volume
-        return density
+    def _get_specie_density(structure: Structure) -> dict[str, float]:
+        # Use as_dict() (not element_composition) so oxidation-state-aware species
+        # labels such as 'Ti4+' / 'O2-' are preserved as the dictionary keys.
+        n_atoms = structure.composition.as_dict()
+        return {sp: count / structure.volume for sp, count in n_atoms.items()}
 
 
 def _dist_to_counts(d: np.ndarray, r_min: float = 0.0, r_max: float = 8.0, n_grid: int = 100) -> np.ndarray:

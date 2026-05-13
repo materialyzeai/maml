@@ -13,9 +13,7 @@ from maml.base import BaseDescriber
 if TYPE_CHECKING:
     from collections.abc import Callable
 
-logging.basicConfig()
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.INFO)
 
 
 def wrap_matminer_describer(
@@ -41,8 +39,8 @@ def wrap_matminer_describer(
         verbose = kwargs.pop("verbose", False)
         feature_batch = kwargs.pop("feature_concat", "pandas_concat")
         wrapped_class(*args, **kwargs)
-        logger.info(f"Using matminer_wrapper {wrapped_class.__name__} class")
-        base_kwargs = dict(n_jobs=n_jobs, memory=memory, verbose=verbose, feature_batch=feature_batch)
+        logger.info("Using matminer_wrapper %s class", wrapped_class.__name__)
+        base_kwargs = {"n_jobs": n_jobs, "memory": memory, "verbose": verbose, "feature_batch": feature_batch}
         BaseDescriber.__init__(self, **base_kwargs)
 
     @classmethod  # type: ignore
@@ -57,7 +55,7 @@ def wrap_matminer_describer(
         obj = obj_conversion(obj)
         results = wrapped_class.featurize(self, obj)
         labels = wrapped_class.feature_labels(self)
-        return pd.DataFrame({i: [j] for i, j in zip(labels, results, strict=False)})
+        return pd.DataFrame({label: [value] for label, value in zip(labels, results, strict=True)})
 
     @classmethod  # type: ignore
     def from_preset(cls, name: str, **kwargs):  # type: ignore
