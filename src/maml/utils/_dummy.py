@@ -10,8 +10,8 @@ from ._inspect import get_param_types
 DUMMY_OBJECTS = {
     "str": "H2O",
     "composition": Composition("H2O"),
-    "structure": Structure(Lattice.cubic(3.167), ["Mo", "Mo"], [[0, 0, 0], [0.5, 0.5, 0.5]]),
-    "molecule": Molecule(["C", "O"], [[0, 0, 0], [1, 0, 0]]),
+    "structure": Structure(Lattice.cubic(3.167), ["Mo", "Mo"], [[0, 0, 0], [0.5, 0.5, 0.5]]),  # type: ignore[arg-type]
+    "molecule": Molecule(["C", "O"], [[0, 0, 0], [1, 0, 0]]),  # type: ignore[arg-type]
 }
 
 

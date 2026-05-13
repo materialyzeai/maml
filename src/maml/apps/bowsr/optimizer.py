@@ -94,7 +94,7 @@ def atoms_crowded(structure: Structure, cutoff_distance: float = 1.1) -> bool:
     """
     distance_matrix = copy(structure.distance_matrix)
     distance_matrix[distance_matrix == 0] = np.inf
-    return np.min(distance_matrix) < cutoff_distance
+    return bool(np.min(distance_matrix) < cutoff_distance)
 
 
 class BayesianOptimizer:
