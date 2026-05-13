@@ -518,6 +518,9 @@ class NNPotential(LammpsPotential):
         param = {}
         with open(filename) as f:
             lines = f.readlines()
+        # Rows have varying widths (e.g. `elements Mo` has 2 fields, symfunction rows have 9).
+        # pandas pads short rows with NaN, so any `[1:]`-style slice over a tag row must filter
+        # NaN values via `pd.notna(...)` — `is not None` / truthiness checks pass NaN through.
         df = pd.DataFrame([line.split() for line in lines if "#" not in line])
         self.elements = sorted(
             (element for element in np.ravel(df[df[0] == "elements"])[1:] if pd.notna(element)),
