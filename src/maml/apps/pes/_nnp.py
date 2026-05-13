@@ -521,7 +521,7 @@ class NNPotential(LammpsPotential):
         df = pd.DataFrame([line.split() for line in lines if "#" not in line])
         self.elements = sorted(
             (element for element in np.ravel(df[df[0] == "elements"])[1:] if element is not None),
-            key=lambda x: Element(x),
+            key=Element,
         )
 
         atom_energy = {}
@@ -731,7 +731,7 @@ class NNPotential(LammpsPotential):
 
             self.write_input(**kwargs)
             with subprocess.Popen(["nnp-scaling", "100"], stdout=subprocess.PIPE, stderr=subprocess.PIPE) as p_scaling:
-                stdout, stderr = p_scaling.communicate()
+                _stdout, stderr = p_scaling.communicate()
                 rc = p_scaling.returncode
             if rc != 0:
                 error_msg = f"n2p2 exited with return code {rc}"
@@ -745,7 +745,7 @@ class NNPotential(LammpsPotential):
                 raise RuntimeError(error_msg)
 
             with open(output, "w") as f, subprocess.Popen(["nnp-train"], stdout=f, stderr=subprocess.PIPE) as p_train:
-                stdout, stderr = p_train.communicate()
+                _stdout, stderr = p_train.communicate()
                 rc = p_train.returncode
 
             if rc != 0:
@@ -821,7 +821,7 @@ class NNPotential(LammpsPotential):
                 with subprocess.Popen(
                     ["nnp-predict", input_filename], stdout=subprocess.PIPE, stderr=subprocess.PIPE
                 ) as p_evaluation:
-                    stdout, stderr = p_evaluation.communicate()
+                    _stdout, stderr = p_evaluation.communicate()
                     rc = p_evaluation.returncode
                 if rc != 0:
                     error_msg = f"n2p2 exited with return code {rc}"

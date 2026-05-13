@@ -38,8 +38,8 @@ jobs:
         cache-dependency-glob: "uv.lock"
     - name: Install dependencies
       run: |
-        uv pip install dgl==2.4.0 -f https://data.dgl.ai/wheels/torch-2.4/repo.html
         uv sync
+        uv pip install dgl==2.4.0 -f https://data.dgl.ai/wheels/torch-2.4/repo.html
     - name: pytest
       run: |
         uv run pytest tests --cov=maml
@@ -66,8 +66,8 @@ jobs:
           cache-dependency-glob: "uv.lock"
       - name: Install dependencies
         run: |
-          uv pip install dgl==2.4.0 -f https://data.dgl.ai/wheels/torch-2.4/repo.html
           uv sync
+          uv pip install dgl==2.4.0 -f https://data.dgl.ai/wheels/torch-2.4/repo.html
       - run: |
           uv build
       - name: Publish to PyPi

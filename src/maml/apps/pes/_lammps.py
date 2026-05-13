@@ -211,7 +211,7 @@ class EnergyForceStress(LMPStaticCalculator):
 
     @staticmethod
     def _rotate_force_stress(structure, forces, stresses):
-        _, symmop, rot_matrix = get_lammps_lattice_and_rotation(structure)
+        _, _symmop, rot_matrix = get_lammps_lattice_and_rotation(structure)
         inv_rot_matrix = np.linalg.inv(rot_matrix)
         forces = forces.dot(inv_rot_matrix.T)
         stresses = stress_list_to_matrix(stresses, stress_format="LAMMPS")
@@ -323,7 +323,7 @@ class SpectralNeighborAnalysis(LMPStaticCalculator):
             return line + compute_args if line.startswith("compute") else line
 
         compute_args = f"1 0.99363 {self.twojmax} "
-        el_in_seq = sorted(self.element_profile.keys(), key=lambda x: Element(x))
+        el_in_seq = sorted(self.element_profile.keys(), key=Element)
         cutoffs = [self.element_profile[e]["r"] * self.rcutfac for e in el_in_seq]
         weights = [self.element_profile[e]["w"] for e in el_in_seq]
         compute_args += " ".join([str(p) for p in cutoffs + weights])

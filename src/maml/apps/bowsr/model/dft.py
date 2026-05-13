@@ -58,7 +58,7 @@ class DFT(EnergyModel):
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,  # type: ignore
             ) as p_exe:
-                stdout, stderr = p_exe.communicate()
+                _stdout, stderr = p_exe.communicate()
                 rc = p_exe.returncode
             if rc != 0:
                 error_msg = f"vasp exited with return code {rc}"

@@ -281,7 +281,7 @@ class GAPotential(LammpsPotential):
                 if str(specie) not in gap_sorted_elements:
                     gap_sorted_elements.append(str(specie))
 
-        self.elements = sorted(gap_sorted_elements, key=lambda x: Element(x))
+        self.elements = sorted(gap_sorted_elements, key=Element)
 
         atoms_filename = "train.xyz"
         xml_filename = "train.xml"
@@ -504,5 +504,5 @@ class GAPotential(LammpsPotential):
         tree, element_param, potential_label = get_xml(filename)
         parameters = dict(xml=tree, element_param=element_param, potential_label=potential_label)
         gap = GAPotential(param=parameters)
-        gap.elements = sorted(element_param.keys(), key=lambda x: Element(x))
+        gap.elements = sorted(element_param.keys(), key=Element)
         return gap

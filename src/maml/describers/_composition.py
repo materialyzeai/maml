@@ -255,6 +255,7 @@ class ElementStats(BaseDescriber):
         if num_dim is None:
             return element_properties, property_names
 
+        reduction_params = reduction_params or {}
         value_array = []
         p_keys = []
         for i, j in element_properties.items():

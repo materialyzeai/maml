@@ -47,7 +47,7 @@ class BaseSelector:
                 to scipy.optimize.minimize
         Returns: list of int indices.
         """
-        n_data, n_dim = x.shape
+        _n_data, n_dim = x.shape
         options = options or {"maxiter": 1e4, "ftol": 1e-12}
         res = minimize(
             lambda beta: self.construct_loss(x=x, y=y, beta=beta),
@@ -535,7 +535,7 @@ class L0BrutalForce(BaseSelector):
             n_job (int): number of cpu
         Returns:
         """
-        n, p = x.shape
+        _n, p = x.shape
         index_array = list(range(p))
 
         def _lstsq(c):

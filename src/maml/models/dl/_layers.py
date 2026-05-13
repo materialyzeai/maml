@@ -164,7 +164,7 @@ class WeightedSet2Set(Layer):
         Args:
             input_shape (tuple/list): input shape list.
         """
-        feature_shape, weight_shape, index_shape = input_shape
+        feature_shape, _weight_shape, _index_shape = input_shape
         self.m_weight = self.add_weight(
             shape=(feature_shape[-1], self.n_hidden),
             initializer=self.kernel_initializer,
@@ -224,7 +224,7 @@ class WeightedSet2Set(Layer):
         Returns: sequence of tuples output shapes
 
         """
-        feature_shape, index_shape, _ = input_shape
+        feature_shape, _index_shape, _ = input_shape
         return feature_shape[0], None, 2 * self.n_hidden
 
     def call(self, inputs):
@@ -247,7 +247,7 @@ class WeightedSet2Set(Layer):
         self.c = tf.zeros(tf.stack([n_feature, n_count, self.n_hidden]))
         q_star = tf.zeros(tf.stack([n_feature, n_count, 2 * self.n_hidden]))
         for _i in range(self.T):
-            self.h, c = self._lstm(q_star, self.c)
+            self.h, _c = self._lstm(q_star, self.c)
             e_i_t = tf.reduce_sum(input_tensor=m * tf.repeat(self.h, repeats=counts, axis=1), axis=-1)
             maxes = tf.math.segment_max(e_i_t[0], feature_graph_index)
             maxes = tf.repeat(maxes, repeats=counts)

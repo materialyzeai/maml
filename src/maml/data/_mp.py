@@ -27,6 +27,6 @@ class MaterialsProject(BaseDataSource):
         Returns:
             pandas DataFrame
         """
-        data = self.mpr.materials.summary.search(**criteria, fields=properties)  # type: ignore[attr-defined]
+        data = self.mpr.materials.summary.search(**criteria, fields=properties)  # type: ignore[attr-defined,arg-type]
         data = [{k: v for k, v in dict(d).items() if k in properties} for d in data]
         return pd.DataFrame(data)

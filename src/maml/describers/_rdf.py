@@ -234,7 +234,7 @@ def get_pair_distances(structure: Structure, r_max: float = 8.0) -> list[dict]:
     res = [{"specie": i, "neighbors": {}} for i in species]
     neighbor_species = species[index2]
     tuples = np.array(list(zip(index1, neighbor_species, strict=False)), dtype=[("index", "i4"), ("specie", "<U10")])
-    unique_tuples, indices = np.unique(tuples, return_inverse=True)
+    unique_tuples, _indices = np.unique(tuples, return_inverse=True)
     for _index, unique_tuple in enumerate(unique_tuples):
         res[unique_tuple[0]]["neighbors"][unique_tuple[1]] = distances[tuples == unique_tuple]
     return res

@@ -214,7 +214,7 @@ def write_data_from_structure(
         significant_figures (int): significant figures of floats in output
         origin (tuple): origin coordinates
     """
-    new_matrix, symmop, rot_matrix = get_lammps_lattice_and_rotation(structure=structure, origin=origin)
+    new_matrix, symmop, _rot_matrix = get_lammps_lattice_and_rotation(structure=structure, origin=origin)
     lattice = structure.lattice
     xlo, ylo, zlo = origin
     xhi = new_matrix[0, 0] + xlo

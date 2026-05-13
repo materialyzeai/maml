@@ -44,7 +44,7 @@ class BaseSelectorCP(BaseSelector):
         Returns: list of int indices.
         """
         options = options or {}
-        n, p = x.shape
+        _n, p = x.shape
         beta = cp.Variable(p)
         objective = cp.Minimize(self.construct_loss(x, y, beta))
         constraints = self.construct_constraints(x, y, beta)
