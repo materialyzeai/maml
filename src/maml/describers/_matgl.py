@@ -109,9 +109,7 @@ class MatGLSite(BaseDescriber):
         result_dict = self.describer_model.predict_structure(
             structure, output_layers=self.output_layers, return_features=True
         )
-        atom_fea_dict = {
-            layer: result_dict[layer]["node_feat"].detach().cpu().numpy() for layer in self.output_layers
-        }
+        atom_fea_dict = {layer: result_dict[layer]["node_feat"].detach().cpu().numpy() for layer in self.output_layers}
 
         if isinstance(self.return_type, dict):
             return atom_fea_dict
