@@ -9,6 +9,7 @@ import tensorflow as tf
 from pymatgen.core import Lattice, Structure
 
 try:
+    import dgl  # noqa: F401
     import matgl
 except ImportError:
     matgl = None
@@ -16,7 +17,7 @@ except ImportError:
 from maml.describers import MatGLSite, MatGLStructure
 
 
-@unittest.skipIf(matgl is None, "MatGL package is required.")
+@unittest.skipIf(matgl is None, "MatGL with DGL backend is required.")
 class MatGLTest(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
