@@ -535,7 +535,9 @@ class NNPotential(LammpsPotential):
                 scale_features = "1" if len(df[df[0] == "scale_symmetry_functions"]) != 0 else 0
                 param.update({"scale_features": scale_features})
             elif tag == "hidden_layers":
-                hidden_layers = [int(neuron) for neuron in np.array(df[df[0] == "global_nodes_short"])[0][1:] if neuron]
+                hidden_layers = [
+                    int(neuron) for neuron in np.array(df[df[0] == "global_nodes_short"])[0][1:] if pd.notna(neuron)
+                ]
                 param.update({"hidden_layers": hidden_layers})
                 activations = np.array(df[df[0] == "global_activation_short"])[0][1]
                 param.update({"activations": activations})
