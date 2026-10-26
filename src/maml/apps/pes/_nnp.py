@@ -21,6 +21,7 @@ from pymatgen.core import Element, Lattice, Structure, units
 
 from maml.utils import check_structures_forces_stresses, convert_docs, pool_from
 
+from ._base import _check_returncode
 from ._lammps import LammpsPotential
 
 module_dir = os.path.dirname(__file__)
@@ -314,7 +315,7 @@ class NNPotential(LammpsPotential):
                     )
                 else:
                     lines.append(head_formatter.format(tag, value=self.param.get(tag)))
-            if self.normalized_nodes:
+            if self.normalized_nodes or self.param.get("normalize_nodes"):
                 lines.append("normalize_nodes")
 
             for tag in PARAMS.get("additional"):
@@ -323,7 +324,7 @@ class NNPotential(LammpsPotential):
 
             r_cut = self.param.get("r_cut")
             r_cut /= self.bohr_to_angstrom
-            r_shift = np.array(self.param.get("r_shift"))
+            r_shift = np.array(self.param.get("r_shift"), dtype=np.float64)
             r_shift /= self.bohr_to_angstrom
 
             for central_atom in self.elements:
@@ -409,7 +410,7 @@ class NNPotential(LammpsPotential):
                 else NNinput_params.get("symmetry_function").get("r_shift")
             )
             self.param.update({"r_shift": r_shift})
-            r_shift = np.array(r_shift)
+            r_shift = np.array(r_shift, dtype=np.float64)
             r_shift /= self.bohr_to_angstrom
             a_etas = (
                 kwargs.get("a_etas")
@@ -460,7 +461,8 @@ class NNPotential(LammpsPotential):
                 for _, _ in itertools.combinations_with_replacement(self.elements, 2)
             )
 
-            self.layer_sizes = [self.num_symm_functions, *self.param.get("hidden_layers")]
+            # input layer, hidden layers and the single-neuron atomic energy output layer
+            self.layer_sizes = [self.num_symm_functions, *self.param.get("hidden_layers"), 1]
 
         with open(filename, "w") as f:
             f.write("\n".join(lines))
@@ -535,7 +537,10 @@ class NNPotential(LammpsPotential):
         param.update({"atom_energy": atom_energy})
         for tag in PARAMS.get("general"):
             if tag == "scale_features":
-                scale_features = "1" if len(df[df[0] == "scale_symmetry_functions"]) != 0 else 0
+                scale_features = "0"
+                for key, keyword in NNinput_params.get("general").get(tag).items():
+                    if keyword.strip() and len(df[df[0] == keyword]) != 0:
+                        scale_features = key
                 param.update({"scale_features": scale_features})
             elif tag == "hidden_layers":
                 hidden_layers = [
@@ -582,7 +587,7 @@ class NNPotential(LammpsPotential):
             len(list(itertools.product(a_etas, lambdas, zetas)))
             for _, _ in itertools.combinations_with_replacement(self.elements, 2)
         )
-        self.layer_sizes = [self.num_symm_functions, *hidden_layers]
+        self.layer_sizes = [self.num_symm_functions, *hidden_layers, 1]
         self.param = param
 
     def load_weights(self, weights_filename, specie):
@@ -593,10 +598,9 @@ class NNPotential(LammpsPotential):
             weights_filename (str): The weights file.
             specie (str): The name of specie.
         """
-        if not self.weights.get(specie) or not self.bs.get(specie) or not self.weight_param:
-            self.weights[specie] = []
-            self.bs[specie] = []
-            self.weight_param[specie] = []
+        self.weights[specie] = []
+        self.bs[specie] = []
+        self.weight_param[specie] = []
 
         with open(weights_filename) as f:
             weights_lines = f.readlines()
@@ -677,7 +681,7 @@ class NNPotential(LammpsPotential):
 
     def write_param(self):
         """Write optimized weights file to perform energy and force prediction."""
-        if self.weight_param is None or self.scaling_param is None:
+        if not self.weight_param or self.scaling_param is None:
             raise RuntimeError("The parameters should be provided.")
         for specie in self.elements:
             weights_filename = ".".join(["weights", str(Element(specie).number).zfill(3), "data"])
@@ -694,7 +698,7 @@ class NNPotential(LammpsPotential):
                 f.writelines("\n".join(lines))
 
         scaling_filename = "scaling.data"
-        scaling_formatter = "{:>4s}{:>5s}  {:>22s} {:>22s} {:>22s} {:.>22s}"
+        scaling_formatter = "{:>4s}{:>5s}  {:>22s} {:>22s} {:>22s} {:>22s}"
         scaling_lines = []
         for i in range(self.num_symm_functions * len(self.elements)):
             scaling_lines.append(scaling_formatter.format(*self.scaling_param.iloc[i]))
@@ -738,33 +742,15 @@ class NNPotential(LammpsPotential):
             with subprocess.Popen(["nnp-scaling", "100"], stdout=subprocess.PIPE, stderr=subprocess.PIPE) as p_scaling:
                 _stdout, stderr = p_scaling.communicate()
                 rc = p_scaling.returncode
-            if rc != 0:
-                error_msg = f"n2p2 exited with return code {rc}"
-                msg = stderr.decode("utf-8").split("\n")[:-1]
-                try:
-                    error_line = next(i for i, m in enumerate(msg) if m.startswith("ERROR"))
-                    error_msg += ", ".join(msg[error_line:])
-                except Exception:
-                    error_msg += ", "
-                    error_msg += msg[-1]
-                raise RuntimeError(error_msg)
+            _check_returncode("n2p2", rc, stderr)
 
             with open(output, "w") as f, subprocess.Popen(["nnp-train"], stdout=f, stderr=subprocess.PIPE) as p_train:
                 _stdout, stderr = p_train.communicate()
                 rc = p_train.returncode
 
-            if rc != 0:
-                error_msg = f"n2p2 exited with return code {rc}"
-                msg = stderr.decode("utf-8").split("\n")[:-1]
-                try:
-                    error_line = next(i for i, m in enumerate(msg) if m.startswith("ERROR"))
-                    error_msg += ", ".join(msg[error_line:])
-                except Exception:
-                    error_msg += ", "
-                    error_msg += msg[-1]
-                raise RuntimeError(error_msg)
+            _check_returncode("n2p2", rc, stderr)
 
-            with zopen(output) as f:
+            with zopen(output, "rt") as f:
                 error_lines = f.read()
 
             energy_rmse_pattern = re.compile(r"ENERGY\s*\S*\s*(\S*)\s*(\S*).*?\n")
@@ -828,16 +814,7 @@ class NNPotential(LammpsPotential):
                 ) as p_evaluation:
                     _stdout, stderr = p_evaluation.communicate()
                     rc = p_evaluation.returncode
-                if rc != 0:
-                    error_msg = f"n2p2 exited with return code {rc}"
-                    msg = stderr.decode("utf-8").split("\n")[:-1]
-                    try:
-                        error_line = next(i for i, m in enumerate(msg) if m.startswith("ERROR"))
-                        error_msg += ", ".join(msg[error_line:])
-                    except Exception:
-                        error_msg += ", "
-                        error_msg += msg[-1]
-                    raise RuntimeError(error_msg)
+                _check_returncode("n2p2", rc, stderr)
 
                 _, df = self.read_cfgs(predict_file)
                 dfs.append(df)
