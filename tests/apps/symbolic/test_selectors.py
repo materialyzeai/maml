@@ -94,9 +94,12 @@ class TestSelectors(PymatgenTest):
         np.testing.assert_allclose(selected, [4, 5, 6, 9])
 
     def test_scad(self):
+        # Regression: a wrong SCAD gradient used to make SLSQP fail here with status 9.
         scad = SCAD(1.0)
-        with self.assertRaises(RuntimeError):
-            _ = scad.select(self.x, self.y)
+        selected = scad.select(self.x, self.y)
+        assert scad.is_fitted
+        # all true |beta| < lambd, so the SCAD penalty shrinks everything to zero
+        np.testing.assert_array_equal(selected, [])
 
     def test_l0(self):
         lambd = 1e-6

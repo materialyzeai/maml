@@ -405,10 +405,12 @@ class SCAD(PenalizedLeastSquares):
         return np.sum(penalty).item()
 
     def _penalty_jac(self, x, y, beta):
-        beta = np.abs(beta)
-        z = self.a * self.lambd - beta
-        z[z < 0] = 0
-        return self.lambd * (beta <= self.lambd + z / ((self.a - 1) * self.lambd) * (beta > self.lambd))
+        # p'(|b|) = lambd * [I(|b| <= lambd) + (a * lambd - |b|)_+ / ((a - 1) * lambd) * I(|b| > lambd)]
+        # (eq. 13 in Fan & Lv), chained with d|b|/db = sign(b).
+        beta_abs = np.abs(beta)
+        z = np.clip(self.a * self.lambd - beta_abs, 0, None)
+        deriv = self.lambd * (beta_abs <= self.lambd) + z / (self.a - 1) * (beta_abs > self.lambd)
+        return deriv * np.sign(beta)
 
 
 class Lasso(PenalizedLeastSquares):
