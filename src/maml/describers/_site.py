@@ -141,18 +141,23 @@ class BispectrumCoefficients(BaseDescriber):
 
     @property
     def feature_dim(self) -> int | None:
-        """Bispectrum feature dimension."""
+        """
+        Bispectrum feature dimension, i.e., the number of columns returned by transform_one.
+
+        Per-atom features have n_bs (+ n_bs * (n_bs + 1) / 2 if quadratic) columns. With pot_fit, the
+        features (plus the atom count column "n") are resolved per element.
+        """
         n = 0
         for i in range(self.twojmax + 1):
             for j in range(i + 1):
                 for k in range(j - i, min(self.twojmax, i + j) + 1, 2):
                     if k >= i:
                         n += 1
-        if self.pot_fit:
-            n += 1
-        n_elements = len(self.elements)
-        n *= n_elements
-        return n
+        if self.quadratic:
+            n += n * (n + 1) // 2
+        if not self.pot_fit:
+            return n
+        return (n + 1) * len(self.elements)
 
 
 @describer_type("site")
