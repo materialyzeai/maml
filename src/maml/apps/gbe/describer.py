@@ -8,6 +8,7 @@ from math import gcd
 import numpy as np
 import pandas as pd
 from monty.json import MSONable
+from mp_api.client import MPRester as MPAPIRester
 from pymatgen.core import Element, Structure
 from pymatgen.core.interface import GrainBoundary
 from pymatgen.core.local_env import (
@@ -224,6 +225,20 @@ def get_structural_feature(db_entry: dict, features: list | None = None) -> pd.D
     return pd.DataFrame([fvalues], columns=[f.str_name for f in features])
 
 
+def _get_cohesive_energy(mp_id: str, mp_api: str) -> float:
+    """
+    Cohesive energy (eV/atom, positive for bound solids) from mp_api.
+
+    The MP summary doc has no cohesive energy, so mp_api computes it from the lowest-energy
+    calculation and isolated-atom reference energies, which it fetches through MPContribs.
+    """
+    with MPAPIRester(mp_api) as mpr:
+        if mpr.contribs is None:
+            raise ImportError("Cohesive energies require the MPContribs client. Install with `pip install maml[gbe]`.")
+        # mp_api returns E_bulk - E_atoms (negative); the GB model uses the positive convention.
+        return -mpr.get_cohesive_energy([mp_id], normalization="atom")[mp_id]
+
+
 def get_elemental_feature(
     db_entry: dict,
     loc_algo: str = "crystalnn",
@@ -268,15 +283,16 @@ def get_elemental_feature(
         rester = MPRester(mp_api)
     else:
         raise MPRestError("Please provide API key to access Materials Project")
-    bulk = rester.materials.search(material_ids=[db_entry["material_id"]])[0]  # type: ignore[attr-defined]
-    bulk_s = rester.get_structure_by_material_id(db_entry["material_id"])  # type: ignore[attr-defined]
-    if bulk:
-        f_dict[preset.bdensity.str_name] = bulk[0]["density"]
-        f_dict[preset.G.str_name] = bulk[0]["elasticity"]["G_VRH"]
+    mp_id = db_entry["material_id"]
+    doc = rester.get_summary_by_material_id(mp_id, fields=["density", "shear_modulus"])
+    bulk_s = rester.get_structure_by_material_id(mp_id)
+    f_dict[preset.bdensity.str_name] = doc["density"]
+    f_dict[preset.G.str_name] = (doc.get("shear_modulus") or {}).get("vrh")
     el = Element(db_entry["pretty_formula"])
     f_dict[preset.ar.str_name] = el.atomic_radius
     f_dict[preset.a0.str_name] = bulk_s.lattice.a
-    f_dict[preset.e_coh.str_name] = rester.get_cohesive_energy(db_entry["material_id"])  # type: ignore[attr-defined,misc]
+    if preset.e_coh in features:
+        f_dict[preset.e_coh.str_name] = _get_cohesive_energy(mp_id, mp_api)
     f_dict[preset.hb.str_name] = el.brinell_hardness
     f_dict[preset.CLTE.str_name] = el.coefficient_of_linear_thermal_expansion
 

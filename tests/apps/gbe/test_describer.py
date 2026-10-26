@@ -796,27 +796,42 @@ FAKE_E_COH = 8.301059
 
 
 class _FakeMPRester:
-    """Offline stand-in that mimics the client interface get_elemental_feature currently expects.
+    """Offline stand-in for pymatgen.ext.matproj.MPRester."""
 
-    This interface (``materials.search(...)[0][0]`` dicts and ``get_cohesive_energy``) does not
-    match pymatgen.ext.matproj.MPRester; see test_elemental_feature_with_real_mprester_interface.
-    """
-
-    def __init__(self, api_key=None, docs=None):
+    def __init__(self, api_key=None, shear_modulus=None):
         self.api_key = api_key
-        docs = [{"density": FAKE_DENSITY, "elasticity": {"G_VRH": FAKE_G_VRH}}] if docs is None else docs
-        self.materials = SimpleNamespace(search=lambda material_ids: [docs])
+        self.shear_modulus = {"vrh": FAKE_G_VRH} if shear_modulus is None else shear_modulus
+
+    def get_summary_by_material_id(self, material_id, fields=None):
+        return {"density": FAKE_DENSITY, "shear_modulus": self.shear_modulus}
 
     def get_structure_by_material_id(self, material_id):
         return W_BULK.copy()
 
-    def get_cohesive_energy(self, material_id):
-        return FAKE_E_COH
+
+class _FakeMPAPIRester:
+    """Offline stand-in for mp_api.client.MPRester; get_cohesive_energy returns E_bulk - E_atoms (negative)."""
+
+    contribs = object()
+
+    def __init__(self, api_key=None):
+        self.api_key = api_key
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *args):
+        pass
+
+    def get_cohesive_energy(self, material_ids, normalization="atom"):
+        assert normalization == "atom"
+        return dict.fromkeys(material_ids, -FAKE_E_COH)
 
 
 @pytest.fixture
 def fake_mprester(monkeypatch):
     monkeypatch.setattr(describer_mod, "MPRester", _FakeMPRester)
+    monkeypatch.setattr(describer_mod, "MPAPIRester", _FakeMPAPIRester)
 
 
 @pytest.fixture(scope="module")
@@ -972,13 +987,12 @@ def test_elemental_feature_default_features(fake_mprester, w_gb_entry):
     ]
 
 
-def test_elemental_feature_no_summary_doc(monkeypatch, w_gb_entry):
-    monkeypatch.setattr(describer_mod, "MPRester", lambda api_key: _FakeMPRester(api_key, docs=[]))
-    df = get_elemental_feature(w_gb_entry, features=[a0, ar], mp_api="fake-key")
+def test_elemental_feature_no_elasticity(monkeypatch, fake_mprester, w_gb_entry):
+    # Materials without elastic data have shear_modulus=None in the summary doc.
+    monkeypatch.setattr(describer_mod, "MPRester", lambda api_key: _FakeMPRester(api_key, shear_modulus={}))
+    df = get_elemental_feature(w_gb_entry, features=[a0, G], mp_api="fake-key")
     assert df[a0.str_name][0] == pytest.approx(W_BULK.lattice.a)
-    # G / density are only populated when the summary doc exists.
-    with pytest.raises(KeyError):
-        get_elemental_feature(w_gb_entry, features=[G], mp_api="fake-key")
+    assert df[G.str_name][0] is None
 
 
 def test_elemental_feature_unknown_loc_algo(fake_mprester, w_gb_entry):
@@ -986,18 +1000,41 @@ def test_elemental_feature_unknown_loc_algo(fake_mprester, w_gb_entry):
         get_elemental_feature(w_gb_entry, loc_algo="voronoinn", features=[mean_delta_bl], mp_api="fake-key")
 
 
-@pytest.mark.xfail(
-    reason="get_elemental_feature uses rester.materials.search(...)[0][0] and rester.get_cohesive_energy, "
-    "neither of which exist on pymatgen.ext.matproj.MPRester.",
-    strict=True,
-    raises=AttributeError,
-)
 def test_elemental_feature_with_real_mprester_interface(monkeypatch, w_gb_entry):
+    # Regression: the code called rester.materials.search and rester.get_cohesive_energy, which don't exist on
+    # pymatgen's MPRester. Autospec the real clients so calls outside their interfaces fail.
     rester = create_autospec(MPRester, instance=True)
+    rester.get_summary_by_material_id.return_value = {"density": FAKE_DENSITY, "shear_modulus": {"vrh": FAKE_G_VRH}}
     rester.get_structure_by_material_id.return_value = W_BULK.copy()
+    mpr = create_autospec(describer_mod.MPAPIRester, instance=True)
+    mpr.__enter__.return_value = mpr
+    mpr.get_cohesive_energy.return_value = {w_gb_entry["material_id"]: -FAKE_E_COH}
     monkeypatch.setattr(describer_mod, "MPRester", lambda api_key: rester)
+    monkeypatch.setattr(describer_mod, "MPAPIRester", lambda api_key: mpr)
     df = get_elemental_feature(w_gb_entry, features=[a0, G, bdensity, e_coh], mp_api="fake-key")
     assert df[a0.str_name][0] == pytest.approx(W_BULK.lattice.a)
+    assert df[G.str_name][0] == pytest.approx(FAKE_G_VRH)
+    assert df[bdensity.str_name][0] == pytest.approx(FAKE_DENSITY)
+    assert df[e_coh.str_name][0] == pytest.approx(FAKE_E_COH)
+    mpr.get_cohesive_energy.assert_called_once_with([w_gb_entry["material_id"]], normalization="atom")
+
+
+def test_elemental_feature_skips_cohesive_energy_when_not_requested(monkeypatch, fake_mprester, w_gb_entry):
+    def fail(api_key):
+        raise AssertionError("mp_api should not be called when e_coh is not requested")
+
+    monkeypatch.setattr(describer_mod, "MPAPIRester", fail)
+    df = get_elemental_feature(w_gb_entry, features=[a0, G], mp_api="fake-key")
+    assert e_coh.str_name not in df.columns
+
+
+def test_cohesive_energy_requires_mpcontribs(monkeypatch, fake_mprester, w_gb_entry):
+    class NoContribs(_FakeMPAPIRester):
+        contribs = None
+
+    monkeypatch.setattr(describer_mod, "MPAPIRester", NoContribs)
+    with pytest.raises(ImportError, match="MPContribs client"):
+        get_elemental_feature(w_gb_entry, features=[e_coh], mp_api="fake-key")
 
 
 # ---------------------------------------------------------------------------

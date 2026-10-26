@@ -57,6 +57,7 @@ version = "2025.4.3"
 [project.optional-dependencies]
 symbolic = ["cvxpy"]
 deep = ["tensorflow>=2"]
+gbe = ["mp-api[contribs]"]
 # deep_gpu = ["tensorflow-gpu>=2"]
 
 [dependency-groups]
