@@ -70,7 +70,10 @@ class StandardScaler(MSONable):
         return {
             "@module": self.__class__.__module__,
             "@class": self.__class__.__name__,
-            "params": {"mean": self.mean.tolist(), "std": self.std.tolist()},
+            "params": {
+                "mean": None if self.mean is None else np.asarray(self.mean).tolist(),
+                "std": None if self.std is None else np.asarray(self.std).tolist(),
+            },
         }
 
     @classmethod
