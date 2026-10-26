@@ -90,6 +90,39 @@ def min_interatomic_distance(structures) -> float:
     return float(min_dist)
 
 
+_NON_FINITE = re.compile(r"(?<![\w.])[-+]?(?:nan|inf(?:inity)?)(?![\w.])", re.IGNORECASE)
+
+
+def _load_mtp_param(filename) -> OrderedDict:
+    """
+    Read the parameters of an .mtp file.
+
+    Args:
+        filename (str): The .mtp file.
+
+    Returns:
+        OrderedDict: "safe" holds all lines but the last two verbatim; the last two lines
+            (species_coeffs and moment_coeffs) are parsed into lists of floats.
+
+    Raises:
+        ValueError: If the file contains NaN/inf values or cannot be parsed.
+    """
+    with open(filename) as f:
+        text = f.read()
+    if match := _NON_FINITE.search(text):
+        raise ValueError(f"{filename} contains non-finite parameter values (found {match.group()!r}).")
+    lines = text.splitlines()
+    param: OrderedDict = OrderedDict()
+    param["safe"] = [line.rstrip() for line in lines[:-2]]
+    try:
+        for line in lines[-2:]:
+            key, value = line.rstrip().split(" = ", 1)
+            param[key] = json.loads(value.replace("{", "[").replace("}", "]"))
+    except ValueError as exc:
+        raise ValueError(f"Could not parse the parameters in {filename}: {exc}") from exc
+    return param
+
+
 def feed(attribute, kwargs, dictionary, tab="\t"):
     r"""
     Args:
@@ -669,6 +702,10 @@ class MTPotential(LammpsPotential):
                 over 50 BFGS iterations.
             weighting (str): How to weight configuration with different sizes relative to each other.
                 Choose from "vibrations", "molecules" and "structures".
+
+        Raises:
+            RuntimeError: If mlp is not found, `mlp train` fails, or the fit diverges (the fitted
+                potential contains NaN/inf values or cannot be parsed).
         """
         if not which("mlp"):
             raise RuntimeError("mlp has not been found.\nPlease refer to https://mlip.skoltech.ru for further detail.")
@@ -732,18 +769,20 @@ class MTPotential(LammpsPotential):
                     + _format_mlp_output(stdout, stderr)
                 )
 
-            def load_config(filename):
-                param = OrderedDict()
-                with open(filename) as f:
-                    lines = f.readlines()
-                param["safe"] = [line.rstrip() for line in lines[:-2]]
-                for line in lines[-2:]:
-                    key = line.rstrip().split(" = ")[0]
-                    value = json.loads(line.rstrip().split(" = ")[1].replace("{", "[").replace("}", "]"))
-                    param[key] = value
-                return param
-
-            self.param = load_config(save_fitted_mtp)
+            if not os.path.exists(save_fitted_mtp):
+                raise RuntimeError(
+                    f"mlp train finished but did not write the fitted potential {save_fitted_mtp}.\n"
+                    + _format_mlp_output(stdout, stderr)
+                )
+            try:
+                self.param = _load_mtp_param(save_fitted_mtp)
+            except ValueError as exc:
+                raise RuntimeError(
+                    f"MTP training diverged: {exc} This usually means the fit diverged (e.g. the loss "
+                    "became NaN), not that the input data file is malformed. Check the training data "
+                    "for inconsistent energies/forces, and try other weights or a different "
+                    "max_dist/radial_basis_size.\n" + _format_mlp_output(stdout, stderr)
+                ) from exc
         return rc
 
     def write_param(self, fitted_mtp="fitted.mtp", **kwargs):
@@ -832,17 +871,11 @@ class MTPotential(LammpsPotential):
 
         Returns:
             MTPotential
-        """
-        param = OrderedDict()
-        with open(filename) as f:
-            lines = f.readlines()
-        param["safe"] = [line.rstrip() for line in lines[:-2]]
-        for line in lines[-2:]:
-            key = line.rstrip().split(" = ")[0]
-            value = json.loads(line.rstrip().split(" = ")[1].replace("{", "[").replace("}", "]"))
-            param[key] = value
 
-        mtp = MTPotential(param=param)
+        Raises:
+            ValueError: If the file contains NaN/inf values or cannot be parsed.
+        """
+        mtp = MTPotential(param=_load_mtp_param(filename))
         mtp.elements = elements
 
         return mtp

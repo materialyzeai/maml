@@ -355,6 +355,76 @@ def test_train_without_mlp_mindist(fake_mlp_bin, train_data):
     assert f"min_dist = {min_interatomic_distance(train_data[0]):f}" in calls.file("08g.mtp")
 
 
+def _nan_fitted_mtp(trained):
+    """Write a fitted potential whose coefficients went NaN, as `mlp train` does on divergence."""
+    lines = Path(config_file).read_text().rstrip("\n").split("\n")
+    lines[-2] = "species_coeffs = {nan}"
+    lines[-1] = "moment_coeffs = {nan, -nan, nan, nan, nan, nan, nan, nan, nan}"
+    Path(trained).write_text("\n".join(lines))
+
+
+def test_train_diverged(fake_mlp_bin, train_data):
+    # Regression for #702: a diverged fit wrote `{nan, ...}` coefficients and train() crashed with
+    # an unhelpful json.decoder.JSONDecodeError.
+    def handler(args):
+        if args[1] == "train":
+            trained = next(a.split("=", 1)[1] for a in args if a.startswith("--trained-pot-name="))
+            _nan_fitted_mtp(trained)
+            return 0, "BFGS iter 1: f=nan\nBFGS iter 2: f=nan\nTraining complete\n", ""
+        return fake_mlp(args)
+
+    fake_mlp_bin(handler)
+    mtp = MTPotential()
+    with pytest.raises(RuntimeError, match="MTP training diverged") as excinfo:
+        mtp.train(*train_data)
+    msg = str(excinfo.value)
+    assert "non-finite" in msg
+    assert "mlp stdout" in msg
+    assert "BFGS iter 2: f=nan" in msg
+    assert mtp.param is None
+
+
+@pytest.mark.parametrize(
+    "last_line",
+    [
+        "moment_coeffs = {1.0, inf}",
+        "moment_coeffs = {1.0, -Infinity}",
+        "moment_coeffs = {1.0, NaN}",
+        "moment_coeffs = {1.0, 2.0",  # truncated / unparsable
+    ],
+)
+def test_train_unusable_fitted_mtp(fake_mlp_bin, train_data, last_line):
+    def handler(args):
+        if args[1] == "train":
+            trained = next(a.split("=", 1)[1] for a in args if a.startswith("--trained-pot-name="))
+            lines = Path(config_file).read_text().rstrip("\n").split("\n")
+            Path(trained).write_text("\n".join([*lines[:-1], last_line]))
+            return 0, "done\n", ""
+        return fake_mlp(args)
+
+    fake_mlp_bin(handler)
+    with pytest.raises(RuntimeError, match="MTP training diverged"):
+        MTPotential().train(*train_data)
+
+
+def test_train_missing_fitted_mtp(fake_mlp_bin, train_data):
+    def handler(args):
+        if args[1] == "train":
+            return 0, "something went wrong\n", ""
+        return fake_mlp(args)
+
+    fake_mlp_bin(handler)
+    with pytest.raises(RuntimeError, match=r"did not write the fitted potential 08g_fitted\.mtp") as excinfo:
+        MTPotential().train(*train_data)
+    assert "something went wrong" in str(excinfo.value)
+
+
+def test_from_config_nan(in_tmp):
+    _nan_fitted_mtp("nan.mtp")
+    with pytest.raises(ValueError, match="non-finite"):
+        MTPotential.from_config("nan.mtp", elements=["Mo"])
+
+
 @pytest.mark.parametrize(
     ("structures", "expected"),
     [
