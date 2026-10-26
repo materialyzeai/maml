@@ -22,11 +22,46 @@ from ruamel import yaml
 
 from maml.utils import check_structures_forces_stresses, convert_docs, pool_from
 
-from ._base import _check_returncode
 from ._lammps import LammpsPotential
 
 module_dir = os.path.dirname(__file__)
 soap_params = loadfn(os.path.join(module_dir, "params", "GAP.json"))
+
+
+def _run_quip_program(command: list[str], stdout=None) -> tuple[int, str]:
+    """
+    Run a QUIP/GAP executable (gap_fit, quip) and extract why it failed.
+
+    QUIP programs report usage problems ("missing mandatory parameter ...") and
+    "ERROR" lines on stdout, but write the actual "SYSTEM ABORT: <reason>"
+    message to stderr, followed by "STOP 1".
+
+    Args:
+        command (list[str]): The command line to run.
+        stdout: File object receiving stdout. If None, stdout is captured and
+            searched for error lines.
+
+    Returns:
+        (returncode, reason): reason is an empty string if nothing explains a
+        failure.
+    """
+    with subprocess.Popen(command, stdout=stdout or subprocess.PIPE, stderr=subprocess.PIPE) as p:
+        out, err = p.communicate()
+        returncode = p.returncode
+
+    def _lines(output):
+        return [line.strip() for line in (output or b"").decode("utf-8", errors="replace").splitlines() if line.strip()]
+
+    out_lines = _lines(out)
+    err_lines = [line for line in _lines(err) if not re.fullmatch(r"STOP\s*\d*", line)]
+    reason = [line for line in out_lines if line.startswith("missing mandatory parameter")]
+    error_line = next((i for i, line in enumerate(out_lines) if line.startswith("ERROR")), None)
+    if error_line is not None:
+        reason += out_lines[error_line:]
+    reason += err_lines
+    if not reason and out_lines:
+        reason = out_lines[-1:]
+    return returncode, " ".join(reason)
 
 
 class GAPotential(LammpsPotential):
@@ -333,10 +368,13 @@ class GAPotential(LammpsPotential):
         with ScratchDir("."):
             self.write_cfgs(filename=atoms_filename, cfg_pool=train_pool)
 
-            with subprocess.Popen(exe_command, stdout=subprocess.PIPE) as p:
-                stdout = p.communicate()[0]
-                rc = p.returncode
-            _check_returncode("gap_fit", rc, stdout)
+            rc, reason = _run_quip_program(exe_command)
+            if rc != 0:
+                raise RuntimeError(f"gap_fit exited with return code {rc}" + (f": {reason}" if reason else ""))
+            # Do not rely on the exit status alone: in #677 gap_fit aborted ("SYSTEM ABORT ... STOP 1")
+            # yet maml went on to parse a potential file that was never written.
+            if not os.path.isfile(xml_filename):
+                raise RuntimeError(f"gap_fit did not write {xml_filename}" + (f": {reason}" if reason else ""))
 
             def get_xml(xml_file):
                 tree = ET.parse(xml_file)

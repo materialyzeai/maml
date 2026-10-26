@@ -303,6 +303,56 @@ def test_train_failure(gap_binaries, train_data):
         GAPotential().train(*train_data)
 
 
+# What gap_fit (QUIP 0.10.3) prints when a mandatory argument is missing: the full usage text and
+# "missing mandatory parameter" lines on stdout, the abort reason on stderr.
+GAP_FIT_USAGE = """libAtoms::Hello World: QUIP_ARCH    darwin_aarch64_gfortran
+
+atoms_filename type=STRING scalar current_value=//MANDATORY//
+XYZ file with fitting configurations
+
+export_covariance type=LOGICAL scalar current_value=F
+If true, posterior covariance of the GAP model is saved.
+
+missing mandatory parameter default_kernel_regularisation
+missing mandatory parameter default_sigma
+"""
+GAP_FIT_ABORT = "SYSTEM ABORT: Exit: Mandatory argument(s) missing...   \nSTOP 1\n"
+
+
+def test_train_failure_reports_stderr(gap_binaries, train_data):
+    # Regression (#677): the SYSTEM ABORT reason goes to stderr, which was not captured, so the
+    # error only showed the last stdout line.
+    gap_binaries(handler=lambda args: (1, GAP_FIT_USAGE, GAP_FIT_ABORT))
+    with pytest.raises(RuntimeError) as excinfo:
+        GAPotential().train(*train_data)
+    assert str(excinfo.value) == (
+        "gap_fit exited with return code 1: missing mandatory parameter default_kernel_regularisation "
+        "missing mandatory parameter default_sigma SYSTEM ABORT: Exit: Mandatory argument(s) missing..."
+    )
+
+
+def test_train_failure_multiline_abort(gap_binaries, train_data):
+    stderr = (
+        "SYSTEM ABORT: Determination of e0 was requested to be based on isolated atom energies, "
+        "but not all  atom types\n"
+        "present in the XYZ had an isolated representative.     \nSTOP 1\n"
+    )
+    gap_binaries(handler=lambda args: (1, "libAtoms::Hello World\nNumber of descriptors: 540\n", stderr))
+    with pytest.raises(RuntimeError, match=r"code 1: SYSTEM ABORT: Determination of e0 .* isolated representative\.$"):
+        GAPotential().train(*train_data)
+
+
+def test_train_no_xml_written(gap_binaries, train_data):
+    # Regression (#677): gap_fit aborted without writing the potential, and train() then failed with
+    # FileNotFoundError: train.xml instead of reporting gap_fit's message.
+    calls = gap_binaries(handler=lambda args: (0, GAP_FIT_USAGE, GAP_FIT_ABORT))
+    with pytest.raises(RuntimeError) as excinfo:
+        GAPotential().train(*train_data)
+    assert str(excinfo.value).startswith("gap_fit did not write train.xml: missing mandatory parameter")
+    assert str(excinfo.value).endswith("SYSTEM ABORT: Exit: Mandatory argument(s) missing...")
+    assert len(calls) == 1
+
+
 def test_train_populates_param(trained_gap):
     assert trained_gap.elements == ["Mo"]
     assert trained_gap.param["potential_label"] == "GAP_2017_6_17_60_4_3_56_165"
