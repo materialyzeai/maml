@@ -118,7 +118,7 @@ class SNAPotential(LammpsPotential):
             stress_format (str): stress format, default to "VASP"
         """
         test_structures, test_forces, test_stresses = check_structures_forces_stresses(
-            test_structures, test_forces, test_stresses
+            test_structures, test_forces, test_stresses, stress_format=stress_format
         )
         if include_stress:
             test_stresses = [
