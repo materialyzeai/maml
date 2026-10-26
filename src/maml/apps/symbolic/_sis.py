@@ -104,8 +104,8 @@ class SIS:
 
     def screen(self, x, y):
         """
-        Simple screening method by comparing the correlation between features
-        and the target.
+        Simple screening method by ranking features on the magnitude of their
+        correlation with the target, |x^T y| (eq. 2 in Fan & Lv).
 
         Args:
             x (np.ndarray): input array
@@ -116,7 +116,7 @@ class SIS:
         """
         n = x.shape[1]
         omega = x.T.dot(y)
-        sorted_omega = np.argsort(omega)[::-1]
+        sorted_omega = np.argsort(np.abs(omega))[::-1]
         d = int(n * self.gamma)
         return sorted_omega[:d]
 
