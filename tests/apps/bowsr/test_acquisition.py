@@ -3,10 +3,11 @@ from __future__ import annotations
 import unittest
 
 import numpy as np
+import pytest
 from scipy.special import erfc
 from scipy.stats import norm
 from sklearn.gaussian_process import GaussianProcessRegressor
-from sklearn.gaussian_process.kernels import Matern, RationalQuadratic
+from sklearn.gaussian_process.kernels import RBF, Matern, RationalQuadratic
 
 from maml.apps.bowsr.acquisition import AcquisitionFunction, ensure_rng, predict_mean_std, propose_query_point
 from maml.apps.bowsr.preprocessing import DummyScaler, StandardScaler
@@ -403,6 +404,48 @@ class AcquisitionFunctionTest(unittest.TestCase):
             random_state=ensure_rng(0),
         )
         assert all(abs(calc_gpucb - propose_gpucb) < epislon)
+
+
+@pytest.mark.parametrize("scaler", [DummyScaler(), StandardScaler()], ids=["dummy", "standard"])
+@pytest.mark.parametrize("sampler", ["lhs", "uniform"])
+def test_propose_query_point_reaches_bounds_in_scaled_space(scaler, sampler):
+    """Regression: L-BFGS-B was bounded by the *unscaled* bounds while optimizing in
+    the scaled space, truncating the search box to roughly +/- 1 standard deviation.
+    """
+    rng = np.random.RandomState(0)
+    bounds = np.array([[-1.0, 1.0], [-1.0, 1.0]])
+    x = rng.uniform(-1, 1, size=(20, 2))
+    y = x.sum(axis=1)  # maximum at the (1, 1) corner
+    scaler.fit(x)
+    gpr = GaussianProcessRegressor(kernel=RBF(length_scale=5.0), optimizer=None).fit(scaler.transform(x), y)
+    acq = AcquisitionFunction(acq_type="ucb", kappa=0.0, xi=0.0)
+    proposal = propose_query_point(
+        acquisition=acq.calculate,
+        scaler=scaler,
+        gpr=gpr,
+        y_max=y.max(),
+        noise=0.1,
+        bounds=bounds,
+        random_state=ensure_rng(0),
+        sampler=sampler,
+        n_warmup=3,
+    )
+    assert np.all(proposal >= bounds[:, 0])
+    assert np.all(proposal <= bounds[:, 1])
+    assert np.all(proposal > 0.99)
+
+
+def test_calculate_rejects_mutated_acq_type():
+    acq = AcquisitionFunction(acq_type="ei", kappa=1.0, xi=0.0)
+    acq.acq_type = "bogus"
+    with pytest.raises(ValueError, match="acq type not recognized"):
+        acq.calculate(np.zeros((1, 2)), gpr=None, y_max=0.0, noise=0.0)
+
+
+def test_gpucb_requires_fitted_gpr():
+    acq = AcquisitionFunction(acq_type="gp-ucb", kappa=1.0, xi=0.0)
+    with pytest.raises(AttributeError, match="GP-UCB"):
+        acq.calculate(np.zeros((1, 2)), gpr=GaussianProcessRegressor(), y_max=0.0, noise=0.0)
 
 
 if __name__ == "__main__":

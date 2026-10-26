@@ -139,12 +139,12 @@ class LatticePerturbationTest(unittest.TestCase):
     def test_crystal_system(self):
         assert self.lp1.crys_system == "orthorhombic"
         assert self.lp2.crys_system == "rhombohedral"
-        assert crystal_system(72), "orthorhombic"
-        assert crystal_system(147), "hexagonal"
-        assert crystal_system(148), "rhombohedral"
-        assert crystal_system(229), "cubic"
-        assert crystal_system(12), "monoclinic"
-        assert crystal_system(1), "triclinic"
+        assert crystal_system(72) == "orthorhombic"
+        assert crystal_system(147) == "hexagonal"
+        assert crystal_system(148) == "rhombohedral"
+        assert crystal_system(229) == "cubic"
+        assert crystal_system(12) == "monoclinic"
+        assert crystal_system(1) == "triclinic"
 
     def test_sanity_check(self):
         assert self.lp1._lattice is None
