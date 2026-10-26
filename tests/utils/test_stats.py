@@ -102,14 +102,52 @@ def test_power_mean_unweighted():
     assert Stats.power_mean([1.0, 4.0], p=0) == pytest.approx(2.0)
 
 
-@pytest.mark.xfail(
-    reason="_root_moment centers higher-order moments on the unweighted mean, so weighted std/skewness/kurtosis "
-    "are wrong. Fixing changes ElementStats features, so it needs a maintainer decision.",
-    strict=True,
-)
 def test_weighted_std_uses_weighted_mean():
+    """Regression: higher-order moments were centred on the unweighted mean."""
     # all weight on a single point -> zero spread
     assert Stats.std([0.0, 10.0], weights=[1.0, 0.0]) == pytest.approx(0.0)
+
+
+_WEIGHTED_CASES = [
+    ([1.0, 2.0, 4.0], [1, 2, 1]),
+    ([0.5, 3.0, -1.0, 7.0], [3, 1, 2, 1]),
+    ([1.0, 1.0, 2.0, 3.0, 4.0, 5.0, 2.0], [2, 4, 6, 2, 4, 1, 1]),
+]
+
+
+def _expand(data, weights):
+    return np.repeat(np.array(data), weights)
+
+
+@pytest.mark.parametrize(("data", "weights"), _WEIGHTED_CASES)
+@pytest.mark.parametrize("scale", [1.0, 0.1])  # integer counts and the same pmf as fractions
+def test_weighted_stats_match_expanded_reference(data, weights, scale):
+    w = [i * scale for i in weights]
+    expanded = _expand(data, weights)
+    assert Stats.mean(data, w) == pytest.approx(np.mean(expanded))
+    assert Stats.std(data, w) == pytest.approx(np.std(expanded))
+    assert Stats.skewness(data, w) == pytest.approx(skew(expanded))
+    assert Stats.kurtosis(data, w) == pytest.approx(kurtosis(expanded, fisher=False))
+    assert Stats.mean_absolute_deviation(data, w) == pytest.approx(np.mean(np.abs(expanded - expanded.mean())))
+    mean_w = np.average(data, weights=w)
+    for order in (2, 3, 4):
+        central = np.average((np.array(data) - mean_w) ** order, weights=w)
+        expected = np.sign(central) * np.abs(central) ** (1.0 / order)
+        assert Stats.moment(data, w, order=order) == pytest.approx(expected)
+    np.testing.assert_allclose(
+        Stats.moment(data, w, max_order=3),
+        [Stats.moment(data, w, order=i) for i in (1, 2, 3)],
+    )
+
+
+@pytest.mark.parametrize(("data", "weights"), _WEIGHTED_CASES)
+def test_uniform_weights_equal_unweighted(data, weights):
+    uniform = [1.0] * len(data)
+    for func in (Stats.std, Stats.skewness, Stats.kurtosis):
+        assert func(data, uniform) == pytest.approx(func(data))
+    assert Stats.std(data) == pytest.approx(np.std(data))
+    assert Stats.skewness(data) == pytest.approx(skew(data))
+    assert Stats.kurtosis(data) == pytest.approx(kurtosis(data, fisher=False))
 
 
 @pytest.mark.parametrize(

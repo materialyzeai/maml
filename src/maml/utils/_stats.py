@@ -365,7 +365,8 @@ def _root_moment(data, weights, order) -> float:
     mean = 0.0
 
     if order > 1:
-        mean = np.mean(data)
+        # central moments are taken about the weighted mean
+        mean = float(np.sum(np.asarray(data, dtype=float) * pmf))
 
     moment = sum((i - mean) ** order * j for i, j in zip(data, pmf, strict=False))
 
