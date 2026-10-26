@@ -33,6 +33,10 @@ def get_param_types(func):
 
     for i in all_params:
         annotation = params[i].annotation
+        if isinstance(annotation, str):
+            # Postponed (PEP 563) annotations are plain strings, e.g. "Structure | None".
+            param_dict[i] = annotation.split("|")[0].strip()
+            continue
         param_type = getattr(annotation, "__args__", None)
         if param_type is not None:
             param_dict[i] = param_type[0].__name__

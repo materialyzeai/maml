@@ -31,7 +31,7 @@ def get_describer_dummy_obj(instance):
     str_t = str(arg_type)
     if "." in str_t:
         str_t = str_t.rsplit(".", maxsplit=1)[-1]
-    return DUMMY_OBJECTS[str_t]
+    return DUMMY_OBJECTS[str_t.lower()]
 
 
 def feature_dim_from_test_system(describer):
