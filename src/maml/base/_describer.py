@@ -121,11 +121,10 @@ class BaseDescriber(BaseEstimator, TransformerMixin, MSONable, metaclass=abc.ABC
         else:
             features = Parallel(n_jobs=self.n_jobs)(delayed(cached_transform_one)(self, obj) for obj in objs)
 
-        multi_output = self._is_multi_output()
-        if not multi_output:
-            features = [features]
-        batched_features = [self.feature_batch(i) for i in list(*zip(features, strict=False))]  # type: ignore
-        return batched_features if multi_output else batched_features[0]
+        if not self._is_multi_output():
+            return self.feature_batch(features)
+        # multi-output: transpose [obj][output] -> [output][obj] and batch each output
+        return [self.feature_batch(list(i)) for i in zip(*features, strict=True)]  # type: ignore
 
     def _is_multi_output(self) -> bool:
         # sklearn >= 1.6 replaced the private ``_get_tags`` dict API with
@@ -190,6 +189,8 @@ class SequentialDescriber(Pipeline):
                 consecutively
             **kwargs: pass to pipeline.
         """
+        # sklearn's get_params/clone look up every __init__ argument as an attribute.
+        self.describers = describers
         steps = [(i.__class__.__name__, i) for i in describers]
         super().__init__(steps, **kwargs)
 
