@@ -2,40 +2,103 @@
 
 from __future__ import annotations
 
+import functools
+from pathlib import Path
 from typing import TYPE_CHECKING
 
 import matgl
 import numpy as np
 import pandas as pd
 import torch
-from matgl.data.transformer import LogTransformer, Normalizer
+from huggingface_hub import try_to_load_from_cache
+from matgl.config import MATGL_CACHE
+from matgl.utils.io import HF_MATGL_ORG
 
 from maml.base import BaseDescriber, describer_type
 
 if TYPE_CHECKING:
     from pymatgen.core import Molecule, Structure
 
-DEFAULT_MODEL = "M3GNet-Eform-MP-2018.6.1"
-
-# Property models (e.g. the default M3GNet-Eform) are serialized as a TransformedTargetModel whose
-# ``model.pt`` pickles a target transformer. matgl loads checkpoints with ``torch.load(weights_only=True)``
-# but does not allowlist these classes, so they are allowlisted here while loading.
-_SAFE_GLOBALS: list = [Normalizer, LogTransformer]
+DEFAULT_MODEL = "M3GNet-Eform-MP-2019.4.1"
+_MODEL_FILES = ("model.pt", "state.pt", "model.json")
 
 
-def _load_matgl_model(model_path: str | None):
+def _local_model_dir(path: str) -> Path | None:
+    """Return the local directory holding the files of a MatGL model without querying the Hub.
+
+    Args:
+        path: Local model directory, or a model name / repo id already in matgl's Hugging Face cache.
+
+    Returns:
+        The directory, or None if the model is not available locally.
+    """
+    if all((Path(path) / fn).exists() for fn in _MODEL_FILES):
+        return Path(path)
+    repo_id = path if "/" in path else f"{HF_MATGL_ORG}/{path}"
+    try:
+        cached = [try_to_load_from_cache(repo_id, fn, cache_dir=str(MATGL_CACHE)) for fn in _MODEL_FILES]
+    except ValueError:  # not a valid repo id, e.g. a missing local path
+        return None
+    if all(isinstance(f, str) for f in cached):
+        return Path(str(cached[0])).parent
+    return None
+
+
+def _load_matgl_model(model_path: str | None, prefer_local: bool = False):
     """Load a MatGL model, defaulting to the M3GNet formation energy model.
 
     Wrapped models (e.g. TransformedTargetModel, Potential) are unwrapped to the underlying graph model.
+
+    Args:
+        model_path: Model name, Hugging Face repo id or local directory. Defaults to DEFAULT_MODEL.
+        prefer_local: Load from matgl's local cache when the model is already there, skipping the Hub
+            query that ``matgl.load_model`` otherwise makes on every call.
+
+    Returns:
+        (model, model_path)
     """
     path = model_path if model_path else DEFAULT_MODEL
-    with torch.serialization.safe_globals(_SAFE_GLOBALS):
-        loaded = matgl.load_model(path)
+    source = path
+    if prefer_local and (model_dir := _local_model_dir(path)) is not None:
+        source = str(model_dir)
+    loaded = matgl.load_model(source)
     return getattr(loaded, "model", loaded), path
 
 
+@functools.lru_cache(maxsize=4)
+def _cached_matgl_model(model_path: str):
+    """Load a MatGL model at most once per process, for describers restored from a pickle.
+
+    The pickling process has already fetched the model, so it is loaded from the local cache if present.
+    """
+    return _load_matgl_model(model_path, prefer_local=True)[0]
+
+
+class _PickleByModelPath:
+    """Pickle a MatGL describer by its ``model_path`` instead of by its loaded model.
+
+    joblib's process workers (``n_jobs``) and its ``Memory`` cache key both pickle the describer. The
+    model holds sympy-lambdified basis functions that the standard pickler rejects, so ``memory`` failed
+    outright, and copying the weights into every task is wasteful. The model is therefore dropped on
+    pickling and reloaded from ``model_path`` on unpickling, once per process.
+    """
+
+    model_path: str
+
+    def __getstate__(self) -> dict:
+        """Return the describer state without the loaded model."""
+        state = dict(super().__getstate__())  # type: ignore[call-overload]
+        state["describer_model"] = None
+        return state
+
+    def __setstate__(self, state: dict) -> None:
+        """Restore the describer state and reload the model from ``model_path``."""
+        super().__setstate__(state)  # type: ignore[misc]
+        self.describer_model = _cached_matgl_model(self.model_path)
+
+
 @describer_type("structure")
-class MatGLStructure(BaseDescriber):
+class MatGLStructure(_PickleByModelPath, BaseDescriber):
     """Use M3GNet pre-trained models as featurizer to get Structural features."""
 
     def __init__(
@@ -47,7 +110,7 @@ class MatGLStructure(BaseDescriber):
         Args:
             model_path (str): m3gnet models path. If no path is provided,
                 the models will be M3GNet formation energy model on MatGL repo:
-                https://github.com/materialsvirtuallab/matgl/tree/main/pretrained_models/M3GNet-MP-2018.6.1-Eform
+                https://huggingface.co/materialyze/M3GNet-Eform-MP-2019.4.1
                 Please refer to the M3GNet paper:
                 https://doi.org/10.1038/s43588-022-00349-3.
             **kwargs: Pass through to BaseDescriber.
@@ -70,7 +133,7 @@ class MatGLStructure(BaseDescriber):
 
 
 @describer_type("site")
-class MatGLSite(BaseDescriber):
+class MatGLSite(_PickleByModelPath, BaseDescriber):
     """Use MatGL pre-trained models as featurizer to get atomic features."""
 
     def __init__(
@@ -84,7 +147,7 @@ class MatGLSite(BaseDescriber):
         Args:
             model_path (str): m3gnet models path. If no path is provided,
                 the models will be M3GNet formation energy model on MatGL repo:
-                https://github.com/materialsvirtuallab/matgl/tree/main/pretrained_models/M3GNet-MP-2018.6.1-Eform
+                https://huggingface.co/materialyze/M3GNet-Eform-MP-2019.4.1
                 Please refer to the M3GNet paper:
                 https://doi.org/10.1038/s43588-022-00349-3.
             output_layers: List of names for the layer of GNN as output. Choose from "embedding", "gc_1", "gc_2",...,

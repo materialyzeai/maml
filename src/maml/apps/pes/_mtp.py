@@ -29,6 +29,122 @@ module_dir = os.path.dirname(__file__)
 MTini_params = loadfn(os.path.join(module_dir, "params", "MTini.json"))
 
 
+MLIP2_URL = "https://gitlab.com/ashapeev/mlip-2"
+MLIP3_URL = "https://gitlab.com/ashapeev/mlip-3"
+SUPPORTED_VERSIONS = ("mlip-2", "mlip-3", "mlip-dev")
+SUPPORTED_VERSIONS_MSG = (
+    'maml\'s MTPotential only supports the MLIP-2 (version="mlip-2"), MLIP-3 (version="mlip-3") and '
+    '"mlip-dev" command-line interfaces, and `version` must match the installed mlp. '
+    f"MLIP-2 is available at {MLIP2_URL} and MLIP-3 at {MLIP3_URL}."
+)
+
+# MLIP-3 `mlp train` has no --weighting option. Its --weight_scaling (energies and stresses) and
+# --weight_scaling_forces options take the place of MLIP-2's --weighting, with the combinations
+# recommended in MLIP-3's `mlp help train` for MD-sampled configurations, molecules and periodic
+# structures.
+MLIP3_WEIGHT_SCALING = {
+    "vibration": (1, 0),
+    "vibrations": (1, 0),
+    "molecules": (0, 0),
+    "structures": (2, 1),
+}
+
+# MLIP-3 appends its active-learning state (partly binary) to a trained potential after this marker.
+_MLIP3_SELECTION_MARKER = b"\n#MVS_v"
+
+
+def _output_tail(output: bytes | str | None, n_lines: int = 20) -> str:
+    """Return the last ``n_lines`` non-empty lines of a process output stream."""
+    if isinstance(output, bytes):
+        output = output.decode("utf-8", errors="replace")
+    lines = [line.rstrip() for line in (output or "").splitlines() if line.strip()]
+    return "\n".join(lines[-n_lines:])
+
+
+def _format_mlp_output(stdout: bytes | str | None, stderr: bytes | str | None, n_lines: int = 20) -> str:
+    """Format the tails of ``mlp``'s stdout and stderr for an error message."""
+    parts = []
+    for name, stream in (("stdout", stdout), ("stderr", stderr)):
+        tail = _output_tail(stream, n_lines)
+        if tail:
+            parts.append(f"--- mlp {name} (last {n_lines} lines) ---\n{tail}")
+    return "\n".join(parts) if parts else "(mlp produced no output)"
+
+
+def min_interatomic_distance(structures) -> float:
+    """
+    Minimum interatomic distance over a set of periodic structures.
+
+    This is the quantity reported by ``mlp mindist`` and used as the ``min_dist`` of the MTP
+    radial basis: the minimum over all pairs of atoms, including pairs between an atom and
+    periodic images of itself or of other atoms.
+
+    Args:
+        structures ([Structure]): Pymatgen Structure objects.
+
+    Returns:
+        float: The minimum interatomic distance in Angstrom.
+
+    Raises:
+        ValueError: If no structures are given.
+    """
+    if not structures:
+        raise ValueError("At least one structure is needed to compute the minimum interatomic distance.")
+    min_dist = np.inf
+    for structure in structures:
+        # Every atom has periodic images of itself at the lattice vector lengths, so a cutoff just
+        # above min(a, b, c) always finds a neighbour. Start smaller and grow the cutoff to keep
+        # the neighbour list cheap for large cells.
+        guaranteed = min(structure.lattice.abc) + 1e-3
+        cutoff = min(3.0, guaranteed)
+        while True:
+            distances = structure.get_neighbor_list(cutoff)[3]
+            if len(distances) > 0 or cutoff >= guaranteed:
+                break
+            cutoff = min(2 * cutoff, guaranteed)
+        if len(distances) > 0:
+            min_dist = min(min_dist, float(np.min(distances)))
+    return float(min_dist)
+
+
+_NON_FINITE = re.compile(r"(?<![\w.])[-+]?(?:nan|inf(?:inity)?)(?![\w.])", re.IGNORECASE)
+
+
+def _load_mtp_param(filename) -> OrderedDict:
+    """
+    Read the parameters of an .mtp file.
+
+    A potential trained by MLIP-3 is followed by its active-learning (selection) state, which
+    starts with a "#MVS_v1.1" line and contains binary data. It is not needed to evaluate the
+    potential and is dropped.
+
+    Args:
+        filename (str): The .mtp file.
+
+    Returns:
+        OrderedDict: "safe" holds all lines but the last two verbatim; the last two lines
+            (species_coeffs and moment_coeffs) are parsed into lists of floats.
+
+    Raises:
+        ValueError: If the file contains NaN/inf values or cannot be parsed.
+    """
+    with open(filename, "rb") as f:
+        data = f.read()
+    text = data.split(_MLIP3_SELECTION_MARKER, 1)[0].decode("utf-8", errors="replace").rstrip()
+    if match := _NON_FINITE.search(text):
+        raise ValueError(f"{filename} contains non-finite parameter values (found {match.group()!r}).")
+    lines = text.splitlines()
+    param: OrderedDict = OrderedDict()
+    param["safe"] = [line.rstrip() for line in lines[:-2]]
+    try:
+        for line in lines[-2:]:
+            key, value = line.rstrip().split(" = ", 1)
+            param[key] = json.loads(value.replace("{", "[").replace("}", "]"))
+    except ValueError as exc:
+        raise ValueError(f"Could not parse the parameters in {filename}: {exc}") from exc
+    return param
+
+
 def feed(attribute, kwargs, dictionary, tab="\t"):
     r"""
     Args:
@@ -65,14 +181,20 @@ class MTPotential(LammpsPotential):
         Args:
             name (str): Name of force field.
             param (dict): The parameter configuration of potentials.
-            version (str): The version of mlip package. Default is "mlip-2". "mlip-dev" is also supported.
+            version (str): The version of mlip package: "mlip-3" (default), "mlip-2" or
+                "mlip-dev". With "mlip-3", train() and evaluate() are supported, but the LAMMPS
+                based methods (write_param, write_ini and everything built on them) are not, since
+                MLIP-3's LAMMPS interface is a separate package with its own input format.
         """
+        version = version if version else "mlip-3"
+        if version not in SUPPORTED_VERSIONS:
+            raise ValueError(f"Unsupported mlip version {version!r}. Choose from {SUPPORTED_VERSIONS}.")
         self.name = name if name else "MTPotential"
         self.mtp_stress_order = ["xx", "yy", "zz", "yz", "xz", "xy"]
         self.vasp_stress_order = ["xx", "yy", "zz", "xy", "yz", "xz"]
         self.param = param if param else None
         self.elements = None
-        self.version = version if version else "mlip-2"
+        self.version = version
 
     def _line_up(self, structure, energy, forces, virial_stress):
         """
@@ -131,7 +253,8 @@ class MTPotential(LammpsPotential):
             lines.append(" Energy")
             lines.append(f"{inputs['Energy']:>24.12f}")
         if "Stress" in inputs:
-            if not hasattr(self, "version") or self.version == "mlip-2":
+            # MLIP-3 reads (and writes) the same PlusStress block as MLIP-2.
+            if not hasattr(self, "version") or self.version in ("mlip-2", "mlip-3"):
                 format_str = "{:>16s}{:>12s}{:>12s}{:>12s}{:>12s}{:>12s}"
                 lines.append(format_str.format("PlusStress:  xx", "yy", "zz", "yz", "xz", "xy"))
             if self.version == "mlip-dev":
@@ -176,9 +299,9 @@ class MTPotential(LammpsPotential):
 
     def write_ini(self, mtp_filename="fitted.mtp", **kwargs):
         """
-        Write mlip.ini file for mlip packages of version mlip-2 or mlip-dev.
+        Write mlip.ini file for mlip packages of version mlip-2 or mlip-dev. Not supported for
+        mlip-3, whose LAMMPS interface is a separate package.
         Supported keyword arguments are parallel with options stated in the mlip manuals.
-        mlip-2 is recommended, as it is the only officially supported version by mlip.
         Please refer to https://mlip.skoltech.ru.
 
         Args:
@@ -334,6 +457,12 @@ class MTPotential(LammpsPotential):
                         Log (str): Filename to write relaxation log. No logging
                             if not specified. Default to None.
         """
+        if getattr(self, "version", None) == "mlip-3":
+            raise NotImplementedError(
+                "mlip.ini/LAMMPS input is not supported for version='mlip-3': MLIP-3's LAMMPS "
+                "interface (interface-lammps-mlip-3) is a separate package and has not been "
+                "integrated into maml."
+            )
         lines = []
         if not hasattr(self, "version") or self.version == "mlip-2":
             format_str = "{:<48s}{:<20s}"
@@ -597,17 +726,30 @@ class MTPotential(LammpsPotential):
             max_dist (float): The actual radial cutoff.
             radial_basis_size (int): Relevant to number of radial basis function.
             max_iter (int): The number of maximum iteration.
+                (MLIP-3: --iteration_limit.)
             energy_weight (float): The weight of energy.
             force_weight (float): The weight of forces.
             stress_weight (float): The weight of stresses. Zero-weight can be assigned.
             init_params (str): How to initialize parameters if a potential was not
                 pre-fitted. Choose from "same" and "random".
+                (MLIP-3: --init_random=false for "same", --init_random=true for "random".)
             scale_by_force (float): Default=0. If >0 then configurations near equilibrium
                (with roughly force < scale_by_force) get more weight.
             bfgs_conv_tol (float): Stop training if error dropped by a factor smaller than this
-                over 50 BFGS iterations.
+                over 50 BFGS iterations. (MLIP-3: --tolerance.)
             weighting (str): How to weight configuration with different sizes relative to each other.
-                Choose from "vibrations", "molecules" and "structures".
+                Choose from "vibrations", "molecules" and "structures". (MLIP-3:
+                --weight_scaling/--weight_scaling_forces = 1/0, 0/0 and 2/1 respectively.)
+
+        With version="mlip-3" the remaining options map to MLIP-3's underscored flags
+        (--energy_weight, --force_weight, --stress_weight, --scale_by_force), the fitted potential
+        is written with --save_to, and MLIP-2's --curr-pot-name has no MLIP-3 equivalent. MLIP-3
+        also resets the potential's min_dist to 0.99 times the minimum interatomic distance of the
+        training set.
+
+        Raises:
+            RuntimeError: If mlp is not found, `mlp train` fails, or the fit diverges (the fitted
+                potential contains NaN/inf values or cannot be parsed).
         """
         if not which("mlp"):
             raise RuntimeError("mlp has not been found.\nPlease refer to https://mlip.skoltech.ru for further detail.")
@@ -630,12 +772,9 @@ class MTPotential(LammpsPotential):
             MTP_file_path = os.path.join(module_dir, "params", unfitted_mtp)
             shutil.copyfile(MTP_file_path, os.path.join(os.getcwd(), unfitted_mtp))
 
-            with open("min_dist", "w") as f, subprocess.Popen(["mlp", "mindist", atoms_filename], stdout=f) as p:
-                p.communicate()[0]
-
-            with open("min_dist") as f:
-                lines = f.readlines()
-            min_dist = float(lines[-1].split(":")[1])
+            # Computed in Python rather than with `mlp mindist`, which does not exist in every MLIP
+            # version (e.g. MLIP-3) and whose output format is not stable across versions.
+            min_dist = min_interatomic_distance(train_structures)
 
             with open(unfitted_mtp) as f:
                 template = f.read()
@@ -646,8 +785,30 @@ class MTPotential(LammpsPotential):
 
             save_fitted_mtp = ".".join([unfitted_mtp.split(".")[0] + "_fitted", unfitted_mtp.split(".")[1]])
 
-            with subprocess.Popen(
-                [
+            if self.version == "mlip-3":
+                if init_params not in ("same", "random"):
+                    raise ValueError(f"init_params must be 'same' or 'random', got {init_params!r}.")
+                if weighting not in MLIP3_WEIGHT_SCALING:
+                    raise ValueError(f"weighting must be one of {sorted(MLIP3_WEIGHT_SCALING)}, got {weighting!r}.")
+                weight_scaling, weight_scaling_forces = MLIP3_WEIGHT_SCALING[weighting]
+                cmd = [
+                    "mlp",
+                    "train",
+                    unfitted_mtp,
+                    atoms_filename,
+                    f"--save_to={save_fitted_mtp}",
+                    f"--iteration_limit={max_iter}",
+                    f"--energy_weight={energy_weight}",
+                    f"--force_weight={force_weight}",
+                    f"--stress_weight={stress_weight}",
+                    f"--init_random={'true' if init_params == 'random' else 'false'}",
+                    f"--scale_by_force={scale_by_force}",
+                    f"--tolerance={bfgs_conv_tol}",
+                    f"--weight_scaling={weight_scaling}",
+                    f"--weight_scaling_forces={weight_scaling_forces}",
+                ]
+            else:
+                cmd = [
                     "mlp",
                     "train",
                     unfitted_mtp,
@@ -662,25 +823,35 @@ class MTPotential(LammpsPotential):
                     f"--scale-by-force={scale_by_force}",
                     f"--bfgs-conv-tol={bfgs_conv_tol}",
                     f"--weighting={weighting}",
-                ],
+                ]
+
+            with subprocess.Popen(
+                cmd,
                 stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
             ) as p:
-                stdout = p.communicate()[0]
+                stdout, stderr = p.communicate()
                 rc = p.returncode
-            _check_returncode("MLP", rc, stdout)
+            if rc != 0:
+                raise RuntimeError(
+                    f"mlp train exited with return code {rc}. {SUPPORTED_VERSIONS_MSG}\n"
+                    + _format_mlp_output(stdout, stderr)
+                )
 
-            def load_config(filename):
-                param = OrderedDict()
-                with open(filename) as f:
-                    lines = f.readlines()
-                param["safe"] = [line.rstrip() for line in lines[:-2]]
-                for line in lines[-2:]:
-                    key = line.rstrip().split(" = ")[0]
-                    value = json.loads(line.rstrip().split(" = ")[1].replace("{", "[").replace("}", "]"))
-                    param[key] = value
-                return param
-
-            self.param = load_config(save_fitted_mtp)
+            if not os.path.exists(save_fitted_mtp):
+                raise RuntimeError(
+                    f"mlp train finished but did not write the fitted potential {save_fitted_mtp}. "
+                    f"{SUPPORTED_VERSIONS_MSG}\n" + _format_mlp_output(stdout, stderr)
+                )
+            try:
+                self.param = _load_mtp_param(save_fitted_mtp)
+            except ValueError as exc:
+                raise RuntimeError(
+                    f"MTP training diverged: {exc} This usually means the fit diverged (e.g. the loss "
+                    "became NaN), not that the input data file is malformed. Check the training data "
+                    "for inconsistent energies/forces, and try other weights or a different "
+                    "max_dist/radial_basis_size.\n" + _format_mlp_output(stdout, stderr)
+                ) from exc
         return rc
 
     def write_param(self, fitted_mtp="fitted.mtp", **kwargs):
@@ -690,7 +861,22 @@ class MTPotential(LammpsPotential):
         Args:
             fitted_mtp (str): Filename to store xml formatted parameters.
             **kwargs: pass to write_ini method.
+
+        Raises:
+            NotImplementedError: For version="mlip-3", whose LAMMPS interface is not supported.
         """
+        if getattr(self, "version", None) == "mlip-3":
+            raise NotImplementedError(
+                "LAMMPS calculations are not supported for version='mlip-3': MLIP-3's LAMMPS "
+                "interface (interface-lammps-mlip-3) is a separate package and has not been "
+                "integrated into maml. train() and evaluate() work with mlip-3."
+            )
+        self._write_mtp(fitted_mtp)
+        ini_file = self.write_ini(mtp_filename=fitted_mtp, load_from=fitted_mtp, Calculate_EFS=True, **kwargs)
+        return [self.pair_style.format(ini_file), self.pair_coeff]
+
+    def _write_mtp(self, fitted_mtp):
+        """Write the fitted parameters to an .mtp file."""
         if not self.param:
             raise RuntimeError("The parameters should be provided.")
         lines = [
@@ -703,8 +889,6 @@ class MTPotential(LammpsPotential):
         ]
         with open(fitted_mtp, "w") as f:
             f.write("\n".join(lines))
-        ini_file = self.write_ini(mtp_filename=fitted_mtp, load_from=fitted_mtp, Calculate_EFS=True, **kwargs)
-        return [self.pair_style.format(ini_file), self.pair_coeff]
 
     def evaluate(self, test_structures, test_energies, test_forces, test_stresses=None, **kwargs):
         """
@@ -720,7 +904,8 @@ class MTPotential(LammpsPotential):
                 with each single structure case.
             test_stresses (list): List of DFT-calculated (6, ) viriral stresses
                 of each structure in structures list.
-            kwargs: Parameters of write_param method.
+            kwargs: Parameters of write_param method. Ignored for version="mlip-3", which
+                runs `mlp calculate_efs` on the potential file without an mlip.ini.
         """
         if not which("mlp"):
             raise RuntimeError("mlp has not been found.\nPlease refer to https://mlip.skoltech.ru for further detail.")
@@ -733,19 +918,24 @@ class MTPotential(LammpsPotential):
         predict_pool = pool_from(test_structures, test_energies, test_forces, test_stresses)
 
         with ScratchDir("."):
-            self.write_param(
-                fitted_mtp=fitted_mtp,
-                Abinitio=0,
-                Driver=1,
-                Write_cfgs=predict_file,
-                Database_filename=original_file,
-                **kwargs,
-            )
+            if self.version == "mlip-3":
+                self._write_mtp(fitted_mtp)
+            else:
+                self.write_param(
+                    fitted_mtp=fitted_mtp,
+                    Abinitio=0,
+                    Driver=1,
+                    Write_cfgs=predict_file,
+                    Database_filename=original_file,
+                    **kwargs,
+                )
             original_file = self.write_cfg(original_file, cfg_pool=predict_pool)
             _, df_orig = self.read_cfgs(original_file)
 
             if not hasattr(self, "version") or self.version == "mlip-2":
                 cmd = ["mlp", "calc-efs", fitted_mtp, original_file, predict_file]
+            elif self.version == "mlip-3":
+                cmd = ["mlp", "calculate_efs", fitted_mtp, original_file, f"--output_filename={predict_file}"]
             elif self.version == "mlip-dev":
                 cmd = ["mlp", "run", "mlip.ini", f"--filename={original_file}"]
             with subprocess.Popen(cmd, stdout=subprocess.PIPE) as p:
@@ -754,32 +944,33 @@ class MTPotential(LammpsPotential):
             _check_returncode("mlp", rc, stdout)
             if not os.path.exists(predict_file):
                 predict_file = f"{predict_file}_0"
+            if not os.path.exists(predict_file):
+                # mlp exits with 0 even for unknown commands, e.g. MLIP-2's calc-efs under MLIP-3.
+                raise RuntimeError(
+                    f"{cmd[0]} {cmd[1]} did not write the predicted configurations. {SUPPORTED_VERSIONS_MSG}\n"
+                    + _format_mlp_output(stdout, None)
+                )
             _, df_predict = self.read_cfgs(predict_file)
         return df_orig, df_predict
 
     @staticmethod
-    def from_config(filename, elements):
+    def from_config(filename, elements, version=None):
         """
         Initialize potentials with parameters file.
 
         Args:
             filename (str): The file storing parameters of potentials, filename should
-                ends with ".mtp".
+                ends with ".mtp". Potentials trained by MLIP-2 or MLIP-3 can be read.
             elements (list): The list of elements.
+            version (str): The version of mlip package, see MTPotential. Default is "mlip-3".
 
         Returns:
             MTPotential
-        """
-        param = OrderedDict()
-        with open(filename) as f:
-            lines = f.readlines()
-        param["safe"] = [line.rstrip() for line in lines[:-2]]
-        for line in lines[-2:]:
-            key = line.rstrip().split(" = ")[0]
-            value = json.loads(line.rstrip().split(" = ")[1].replace("{", "[").replace("}", "]"))
-            param[key] = value
 
-        mtp = MTPotential(param=param)
+        Raises:
+            ValueError: If the file contains NaN/inf values or cannot be parsed.
+        """
+        mtp = MTPotential(param=_load_mtp_param(filename), version=version)
         mtp.elements = elements
 
         return mtp
