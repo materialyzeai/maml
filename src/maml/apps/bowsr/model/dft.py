@@ -62,13 +62,12 @@ class DFT(EnergyModel):
                 rc = p_exe.returncode
             if rc != 0:
                 error_msg = f"vasp exited with return code {rc}"
-                msg = stderr.decode("utf-8").split("\n")[:-1]
-                try:
-                    error_line = next(i for i, m in enumerate(msg) if m.startswith("ERROR"))
-                    error_msg += ", ".join(msg[error_line:])
-                except Exception:
-                    error_msg += ", "
-                    error_msg += msg[-1]
+                msg = stderr.decode("utf-8").strip().splitlines()
+                error_line = next((i for i, m in enumerate(msg) if m.startswith("ERROR")), None)
+                if error_line is not None:
+                    error_msg += ": " + ", ".join(msg[error_line:])
+                elif msg:
+                    error_msg += ": " + msg[-1]
                 raise RuntimeError(error_msg)
 
             compat = MaterialsProjectCompatibility()
