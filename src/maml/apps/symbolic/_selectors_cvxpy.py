@@ -48,6 +48,9 @@ class BaseSelectorCP(BaseSelector):
             y (np.ndarray): M output targets
             options (dict): kwargs for cp.Problem.solve
         Returns: list of int indices.
+
+        Raises:
+            RuntimeError: if cvxpy does not find an optimal solution.
         """
         options = options or {}
         _n, p = x.shape
@@ -56,8 +59,11 @@ class BaseSelectorCP(BaseSelector):
         constraints = self.construct_constraints(x, y, beta)
         prob = cp.Problem(objective, constraints)
         prob.solve(solver=self.method, **options)
+        if prob.status not in (cp.OPTIMAL, cp.OPTIMAL_INACCURATE) or beta.value is None:
+            raise RuntimeError(f"Not converged, status {prob.status}")
+        self.is_fitted = True
         self.coef_ = beta.value
-        self.indices = np.where(np.abs(beta.value) > self.coef_thres)[0]  # type: ignore[arg-type]
+        self.indices = np.where(np.abs(beta.value) > self.coef_thres)[0]
         self.coef_[np.where(np.abs(self.coef_) <= self.coef_thres)[0]] = 0.0  # type: ignore
         return self.indices
 
