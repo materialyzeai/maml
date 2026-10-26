@@ -27,6 +27,8 @@ jobs:
     runs-on: ${{ matrix.os }}
     env:
       PMG_MAPI_KEY: ${{ secrets.PMG_MAPI_KEY }}
+      # Pinned MLIP-3 commit built for the real-binary MTP tests.
+      MLIP3_COMMIT: 7fe598da1de1e81d1ca222f4ab6b5d594278605c
 
     steps:
     - uses: actions/checkout@v6
@@ -39,6 +41,25 @@ jobs:
     - name: Install dependencies
       run: |
         uv sync
+    - name: Cache MLIP-3
+      id: cache-mlip3
+      uses: actions/cache@v4
+      with:
+        path: ~/mlip-3/bin/mlp
+        key: mlip3-${{ runner.os }}-${{ env.MLIP3_COMMIT }}
+    - name: Build MLIP-3 (serial mlp)
+      if: steps.cache-mlip3.outputs.cache-hit != 'true'
+      run: |
+        command -v gfortran || (sudo apt-get update && sudo apt-get install -y gfortran)
+        git clone https://gitlab.com/ashapeev/mlip-3.git ~/mlip-3
+        cd ~/mlip-3
+        git checkout "$MLIP3_COMMIT"
+        ./configure --no-mpi --blas=embedded
+        make -j4 mlp
+    - name: Add MLIP-3 to PATH
+      run: |
+        echo "$HOME/mlip-3/bin" >> "$GITHUB_PATH"
+        "$HOME/mlip-3/bin/mlp" list | head -3
     - name: pytest
       run: |
         uv run pytest tests --cov=maml --cov-report=xml
