@@ -61,8 +61,11 @@ def check_structures_forces_stresses(
         stresses = [None] * len(structures)
 
     for i, s in enumerate(structures):
-        # orthogonal structures do not need to rotate
-        if s.lattice.is_orthogonal:
+        # structures already in the LAMMPS orientation (lower-triangular lattice
+        # matrix with positive diagonal) do not need to rotate. Note that an
+        # orthogonal lattice is not necessarily aligned with the x, y, z axes.
+        matrix = s.lattice.matrix
+        if np.allclose(matrix, np.tril(matrix)) and np.all(np.diag(matrix) > 0):
             new_structures.append(s)
             new_forces.append(forces[i])  # type: ignore
             new_stresses.append(stresses[i])  # type: ignore
@@ -300,7 +303,7 @@ def _get_charge(element_or_specie: str | Element | Species) -> float:  # type: i
         return element_or_specie.oxi_state  # type: ignore
     if isinstance(element_or_specie, str):
         try:
-            return Species.from_string(element_or_specie).oxi_state  # type: ignore
+            return Species.from_str(element_or_specie).oxi_state  # type: ignore
         except Exception:
             return 0.0
     return 0.0
