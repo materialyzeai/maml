@@ -28,7 +28,7 @@ module_dir = os.path.dirname(__file__)
 soap_params = loadfn(os.path.join(module_dir, "params", "GAP.json"))
 
 
-def _run_quip_program(command: list[str], stdout=None) -> tuple[int, str]:
+def _run_quip_program(command: list[str]) -> tuple[int, str, str]:
     """
     Run a QUIP/GAP executable (gap_fit, quip) and extract why it failed.
 
@@ -38,20 +38,19 @@ def _run_quip_program(command: list[str], stdout=None) -> tuple[int, str]:
 
     Args:
         command (list[str]): The command line to run.
-        stdout: File object receiving stdout. If None, stdout is captured and
-            searched for error lines.
 
     Returns:
-        (returncode, reason): reason is an empty string if nothing explains a
-        failure.
+        (returncode, stdout, reason): reason is an empty string if nothing
+        explains a failure.
     """
-    with subprocess.Popen(command, stdout=stdout or subprocess.PIPE, stderr=subprocess.PIPE) as p:
+    with subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE) as p:
         out, err = p.communicate()
         returncode = p.returncode
 
     def _lines(output):
         return [line.strip() for line in (output or b"").decode("utf-8", errors="replace").splitlines() if line.strip()]
 
+    stdout = (out or b"").decode("utf-8", errors="replace")
     out_lines = _lines(out)
     err_lines = [line for line in _lines(err) if not re.fullmatch(r"STOP\s*\d*", line)]
     reason = [line for line in out_lines if line.startswith("missing mandatory parameter")]
@@ -61,7 +60,7 @@ def _run_quip_program(command: list[str], stdout=None) -> tuple[int, str]:
     reason += err_lines
     if not reason and out_lines:
         reason = out_lines[-1:]
-    return returncode, " ".join(reason)
+    return returncode, stdout, " ".join(reason)
 
 
 class GAPotential(LammpsPotential):
@@ -368,7 +367,7 @@ class GAPotential(LammpsPotential):
         with ScratchDir("."):
             self.write_cfgs(filename=atoms_filename, cfg_pool=train_pool)
 
-            rc, reason = _run_quip_program(exe_command)
+            rc, _, reason = _run_quip_program(exe_command)
             if rc != 0:
                 raise RuntimeError(f"gap_fit exited with return code {rc}" + (f": {reason}" if reason else ""))
             # Do not rely on the exit status alone: in #677 gap_fit aborted ("SYSTEM ABORT ... STOP 1")
@@ -482,8 +481,11 @@ class GAPotential(LammpsPotential):
             if predict_stress:
                 exe_command.append("virial=T")
 
-            with open(predict_file, "w") as f, subprocess.Popen(exe_command, stdout=f) as p:
-                _ = p.communicate()[0]
+            rc, stdout, reason = _run_quip_program(exe_command)
+            if rc != 0:
+                raise RuntimeError(f"quip exited with return code {rc}" + (f": {reason}" if reason else ""))
+            with open(predict_file, "w") as f:
+                f.write(stdout)
 
             _, df_predict = self.read_cfgs(predict_file, predict=True)
 

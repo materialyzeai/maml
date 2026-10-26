@@ -404,6 +404,17 @@ def test_evaluate(trained_gap, gap_binaries, train_data):
     np.testing.assert_allclose(forces_pred, 0.5 * forces_orig, atol=1e-5)
 
 
+def test_evaluate_quip_failure(trained_gap, gap_binaries, train_data):
+    # Regression: quip's exit status was ignored, so a failure surfaced as an obscure parsing error
+    # of its (frame-less) output.
+    out = "libAtoms::Hello World: QUIP_ARCH    darwin_aarch64_gfortran\n\nCalls to system_timer will do nothing\n"
+    calls = gap_binaries(handler=lambda args: (1, out, "SYSTEM ABORT: predict.xml does not exist   \nSTOP 1\n"))
+    with pytest.raises(RuntimeError) as excinfo:
+        trained_gap.evaluate(*train_data)
+    assert str(excinfo.value) == "quip exited with return code 1: SYSTEM ABORT: predict.xml does not exist"
+    assert calls[0] == ["quip", "atoms_filename=original.xyz", "param_filename=predict.xml", "energy=T", "forces=T"]
+
+
 @pytest.mark.xfail(
     reason="GAPotential.save uses the removed ruamel.yaml dump() API, and param holds an ElementTree "
     "that YAML cannot represent; fixing needs a decision on the on-disk format.",
