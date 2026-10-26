@@ -219,8 +219,9 @@ class ISIS:
         self.coeff = _get_coeff(x[:, find_sel], y)
 
         if len(find_sel) >= max_p:
-            self.coeff = _get_coeff(x[:, find_sel[:max_p]], y)
-            return find_sel[:max_p]
+            self.find_sel = find_sel[:max_p]
+            self.coeff = _get_coeff(x[:, self.find_sel], y)
+            return self.find_sel
         new_findex = np.array(list(set(findex) - set(find_sel)))
         new_y = self.sis.compute_residual(x, y)
         new_x = x[:, new_findex]
