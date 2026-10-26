@@ -8,22 +8,30 @@ import matgl
 import numpy as np
 import pandas as pd
 import torch
+from matgl.data.transformer import LogTransformer, Normalizer
 
 from maml.base import BaseDescriber, describer_type
 
 if TYPE_CHECKING:
     from pymatgen.core import Molecule, Structure
 
-# M3GNet is a DGL-based model; matgl>=3 requires the backend to be set explicitly.
-matgl.set_backend("DGL")
-
 DEFAULT_MODEL = "M3GNet-Eform-MP-2018.6.1"
+
+# Property models (e.g. the default M3GNet-Eform) are serialized as a TransformedTargetModel whose
+# ``model.pt`` pickles a target transformer. matgl loads checkpoints with ``torch.load(weights_only=True)``
+# but does not allowlist these classes, so they are allowlisted here while loading.
+_SAFE_GLOBALS: list = [Normalizer, LogTransformer]
 
 
 def _load_matgl_model(model_path: str | None):
-    """Load a MatGL model, defaulting to the bundled M3GNet formation energy model."""
+    """Load a MatGL model, defaulting to the M3GNet formation energy model.
+
+    Wrapped models (e.g. TransformedTargetModel, Potential) are unwrapped to the underlying graph model.
+    """
     path = model_path if model_path else DEFAULT_MODEL
-    return matgl.load_model(path).model, path
+    with torch.serialization.safe_globals(_SAFE_GLOBALS):
+        loaded = matgl.load_model(path)
+    return getattr(loaded, "model", loaded), path
 
 
 @describer_type("structure")
@@ -56,7 +64,8 @@ class MatGLStructure(BaseDescriber):
         Returns: M3GNet readout layer output as structural features.
 
         """
-        results = self.describer_model.predict_structure(structure, return_features=True)
+        self.describer_model.predict_structure(structure)
+        results = self.describer_model.feature_dict
         return np.array(torch.squeeze(results["readout"]).detach().cpu().numpy())
 
 
@@ -106,9 +115,8 @@ class MatGLSite(BaseDescriber):
         Returns: M3GNet node features as atom features.
 
         """
-        result_dict = self.describer_model.predict_structure(
-            structure, output_layers=self.output_layers, return_features=True
-        )
+        self.describer_model.predict_structure(structure)
+        result_dict = self.describer_model.feature_dict
         atom_fea_dict = {layer: result_dict[layer]["node_feat"].detach().cpu().numpy() for layer in self.output_layers}
 
         if isinstance(self.return_type, dict):
