@@ -20,7 +20,7 @@ def deserialize_keras_activation(activation):
     if isinstance(activation, dict):
         return tf.keras.activations.deserialize(activation)
 
-    if isinstance(activation, tf.keras.activations.Activation):
+    if callable(activation):
         return activation
 
     raise ValueError("activation not recognized")
