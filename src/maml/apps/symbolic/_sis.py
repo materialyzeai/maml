@@ -183,7 +183,7 @@ class ISIS:
             l0_regulate(bool): Whether to regulate features in each iteration, default True.
         """
         self.sis = sis if sis is not None else SIS(gamma=0.1, selector=DantzigSelector(0.1))
-        self.selector = sis.selector  # type: ignore
+        self.selector = self.sis.selector
         self.l0_regulate = l0_regulate
         self.coeff = []  # type: ignore
         self.find_sel = []  # type: ignore
