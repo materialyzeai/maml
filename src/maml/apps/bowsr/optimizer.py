@@ -138,9 +138,10 @@ class BayesianOptimizer:
         scaler = StandardScaler() if use_scaler else DummyScaler()
         self.scaler = scaler
 
+        structure = structure.copy()
         structure.remove_oxidation_states()
         standardized_structure = get_standardized_structure(structure)
-        wps, _, _, lp = struct2perturbation(standardized_structure, **kwargs)
+        wps, _, _, lp = struct2perturbation(standardized_structure, use_symmetry, **kwargs)
 
         u = 0
         while not (all(wp.fit_site for wp in wps) and lp.fit_lattice) and u < 3:
