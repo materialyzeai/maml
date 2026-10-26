@@ -4,10 +4,12 @@ import os
 import unittest
 
 import numpy as np
+import pytest
 from pymatgen.core import Composition, Molecule
 from pymatgen.util.testing import PymatgenTest
 
 from maml.describers import ElementProperty, ElementStats
+from maml.describers._composition import _is_element_or_specie
 
 CWD = os.path.abspath(os.path.dirname(__file__))
 
@@ -121,6 +123,21 @@ class ElementStatsTest(unittest.TestCase):
         res = es.transform(["H2O", "H2O", "H2O", "H2O"])
         assert res.shape[0] == 4
         es.clear_cache()
+
+
+def test_element_stats_property_name_mismatch():
+    with pytest.raises(ValueError, match="Property name length is not consistent"):
+        ElementStats(element_properties={"H": [1, 2], "He": [3, 4]}, property_names=["a"], stats=["mean"])
+
+
+def test_element_stats_invalid_reduction_algo():
+    with pytest.raises(ValueError, match="Reduction algorithm not available"):
+        ElementStats(element_properties={"H": [1, 2], "He": [3, 4]}, stats=["mean"], num_dim=1, reduction_algo="tsne")
+
+
+@pytest.mark.parametrize(("key", "expected"), [("D", True), ("T", True), ("Fe", True), ("Fe2+", True), ("Xx", False)])
+def test_is_element_or_specie(key, expected):
+    assert _is_element_or_specie(key) is expected
 
 
 if __name__ == "__main__":

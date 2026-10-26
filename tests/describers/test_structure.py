@@ -4,7 +4,8 @@ import unittest
 
 import numpy as np
 import pandas as pd
-from pymatgen.core import Element, Lattice, Structure
+import pytest
+from pymatgen.core import Element, Lattice, Molecule, Structure
 from pymatgen.util.testing import PymatgenTest
 
 from maml.describers._structure import (
@@ -163,6 +164,17 @@ class CoulomMatrixTest(unittest.TestCase):
 
         ces = CoulombEigenSpectrum(max_atoms=3)
         self.assertRaises(RuntimeError, ces.transform, [self.s1, self.s2])
+
+
+def test_coulomb_mat_padding():
+    mol = Molecule(["O", "H", "H"], [[0, 0, 0], [0.96, 0, 0], [-0.24, 0.93, 0]])
+    unpadded = CoulombMatrix().get_coulomb_mat(mol)
+    padded = CoulombMatrix(max_atoms=5).get_coulomb_mat(mol)
+    assert padded.shape == (5, 5)
+    np.testing.assert_allclose(padded[:3, :3], unpadded)
+    np.testing.assert_array_equal(padded[3:], 0)
+    np.testing.assert_array_equal(padded[:, 3:], 0)
+    assert unpadded[0, 0] == pytest.approx(0.5 * 8**2.4)
 
 
 if __name__ == "__main__":
