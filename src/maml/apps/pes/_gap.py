@@ -91,7 +91,9 @@ class GAPotential(LammpsPotential):
         if "Energy" in inputs:
             description.append("dft_energy=" + str(inputs["Energy"]))
         if "Stress" in inputs:
-            description.append("dft_virial=" + "\t".join([str(f) for f in inputs["Stress"]]))
+            # Extended XYZ needs array values quoted; an unquoted tab-separated list is read
+            # by QUIP as a single number, so gap_fit silently drops all virials.
+            description.append('dft_virial="' + " ".join([str(f) for f in inputs["Stress"]]) + '"')
         if "SuperCell" in inputs:
             super_cell_str = [str(f) for f in inputs["SuperCell"].matrix.ravel()]
             description.append(f'Lattice="{"     ".join(super_cell_str)}"')
@@ -153,8 +155,9 @@ class GAPotential(LammpsPotential):
         lattice_pattern = re.compile(r'Lattice="(.+)"')
         # energy_pattern = re.compile('dft_energy=(-?[0-9]+.[0-9]+)', re.I)
         energy_pattern = re.compile(r"(?<=\S{3}\s|dft_)energy=(-?[0-9]+.[0-9]+)")
-        # stress_pattern = re.compile('dft_virial={(.+)}')
-        stress_pattern = re.compile(r"dft_virial=({|)(.+?)(}|) \S.*")
+        # Quoted ("..."), braced ({...}) or, for files written by older maml versions,
+        # tab-separated values.
+        stress_pattern = re.compile(r'(?<!\w)dft_virial=(?:"([^"]*)"|\{([^}]*)\}|([^ \n]+))')
         properties_pattern = re.compile(r"properties=(\S+)", re.I)
         # position_pattern = re.compile('\n(.+)', re.S)
         position_pattern = re.compile("\n(.+?)(?=\nE.*|\n\n.*|$)", re.S)
@@ -167,7 +170,7 @@ class GAPotential(LammpsPotential):
             lattice = Lattice([float(s) for s in lattice_str.split()])
             energy_str = energy_pattern.findall(block)[-1]
             energy = float(energy_str)
-            stress_str = stress_pattern.findall(block)[0][1]
+            stress_str = next(s for s in stress_pattern.findall(block)[0] if s)
             virial_stress = np.array([float(s) for s in stress_str.split()])
             virial_stress = [virial_stress[i] for i in [0, 4, 8, 1, 5, 6]]
             properties = properties_pattern.findall(block)[0].split(":")

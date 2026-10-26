@@ -177,11 +177,66 @@ def test_line_up(datapool):
     assert lines[0] == str(len(struct))
     assert len(lines) == len(struct) + 2
     assert "dft_energy=-10.5" in lines[1]
-    # Voigt [xx, yy, zz, xy, yz, xz] expanded to the full 3x3 matrix
-    assert "dft_virial=1\t4\t6\t4\t2\t5\t6\t5\t3" in lines[1]
+    # Voigt [xx, yy, zz, xy, yz, xz] expanded to the full 3x3 matrix. Regression: the values were
+    # written unquoted and tab-separated, which QUIP reads as a single number, so gap_fit found
+    # no virials at all ("Number of target virials ... found: 0") even with use_stress=True.
+    assert 'dft_virial="1 4 6 4 2 5 6 5 3"' in lines[1]
     assert lines[1].endswith("Properties=species:S:1:pos:R:3:Z:I:1:dft_force:R:3")
     assert lines[2].split()[0] == "Mo"
     assert lines[2].split()[4] == "42"
+
+
+# Two frames as printed by ``quip atoms_filename=... energy=T forces=T`` (QUIP 0.10.3), trimmed
+# to two atoms per frame: banner lines, "AT "-prefixed frames, extra map_shift/n_neighb columns
+# and quoted dft_virial arrays.
+QUIP_OUTPUT = """libAtoms::Hello World: 2026-10-26 14:06:58
+libAtoms::Hello World: QUIP_ARCH    darwin_aarch64_gfortran
+
+IPModel_GAP : label = GAP_2026_10_26_480_14_6_57_135
+Energy=-21.0
+Cell Volume: 31.0 A^3
+AT 2
+AT dft_energy=-21.5 dft_virial="1.0       4.0       6.0       4.0       2.0       5.0       6.0       5.0       3.0" \
+energy=-21.0 cutoff=5.0 nneightol=1.2 pbc="T T T" Lattice="3.16 0.0 0.0 0.0 3.16 0.0 0.0 0.0 3.16" \
+Properties=species:S:1:pos:R:3:Z:I:1:dft_force:R:3:map_shift:I:3:n_neighb:I:1:force:R:3
+AT Mo   0.0 0.0 0.0   42   0.1 0.2 0.3   0 0 0   14   0.11 0.21 0.31
+AT Mo   1.58 1.58 1.58   42   -0.1 -0.2 -0.3   0 0 0   14   -0.11 -0.21 -0.31
+Energy=-22.0
+Cell Volume: 31.0 A^3
+AT 2
+AT dft_energy=-22.5 dft_virial="0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0" energy=-22.0 cutoff=5.0 nneightol=1.2 \
+pbc="T T T" Lattice="3.2 0.0 0.0 0.0 3.2 0.0 0.0 0.0 3.2" \
+Properties=species:S:1:pos:R:3:Z:I:1:dft_force:R:3:map_shift:I:3:n_neighb:I:1:force:R:3
+AT Mo   0.0 0.0 0.0   42   0.0 0.0 0.0   0 0 0   14   0.01 0.02 0.03
+AT Mo   1.6 1.6 1.6   42   0.0 0.0 0.0   0 0 0   14   -0.01 -0.02 -0.03
+
+libAtoms::Finalise: Bye-Bye!
+"""
+
+
+def test_read_cfgs_quip_output(in_tmp):
+    # Regression: the unquoted virial was echoed by quip as "dft_virial=0.00000000 0.0", which made
+    # read_cfgs (and hence GAPotential.evaluate) fail with an IndexError.
+    Path("predict.xyz").write_text(QUIP_OUTPUT)
+    data_pool, df = GAPotential.read_cfgs("predict.xyz", predict=True)
+    assert len(data_pool) == 2
+    assert [d["outputs"]["energy"] for d in data_pool] == [-21.0, -22.0]
+    np.testing.assert_allclose(data_pool[0]["outputs"]["forces"], [[0.11, 0.21, 0.31], [-0.11, -0.21, -0.31]])
+    np.testing.assert_allclose(data_pool[0]["outputs"]["virial_stress"], [1, 2, 3, 4, 5, 6])
+    assert df.shape[0] == 2 * (1 + 3 * 2)
+
+
+def test_read_cfgs_legacy_virial(in_tmp, datapool):
+    # Files written by earlier maml versions used an unquoted, tab-separated dft_virial.
+    GAPotential().write_cfgs("new.xyz", cfg_pool=datapool[:2])
+    text = Path("new.xyz").read_text()
+    legacy = re.sub(r'dft_virial="([^"]*)"', lambda m: "dft_virial=" + m.group(1).replace(" ", "\t"), text)
+    assert 'dft_virial="' not in legacy
+    Path("legacy.xyz").write_text(legacy)
+    new_pool, legacy_pool = GAPotential.read_cfgs("new.xyz")[0], GAPotential.read_cfgs("legacy.xyz")[0]
+    for new, old, ref in zip(new_pool, legacy_pool, datapool[:2], strict=True):
+        np.testing.assert_allclose(old["outputs"]["virial_stress"], new["outputs"]["virial_stress"])
+        np.testing.assert_allclose(old["outputs"]["virial_stress"], ref["outputs"]["virial_stress"], rtol=1e-6)
 
 
 def test_write_cfgs_requires_xyz(in_tmp, datapool):
