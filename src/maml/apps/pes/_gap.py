@@ -22,6 +22,7 @@ from ruamel import yaml
 
 from maml.utils import check_structures_forces_stresses, convert_docs, pool_from
 
+from ._base import _check_returncode
 from ._lammps import LammpsPotential
 
 module_dir = os.path.dirname(__file__)
@@ -266,9 +267,7 @@ class GAPotential(LammpsPotential):
         """
         if not which("gap_fit"):
             raise RuntimeError(
-                "gap_fit has not been found.\n",
-                "Please refer to https://github.com/libAtoms/QUIP for ",
-                "further detail.",
+                "gap_fit has not been found.\nPlease refer to https://github.com/libAtoms/QUIP for further detail."
             )
 
         train_structures, train_forces, train_stresses = check_structures_forces_stresses(
@@ -334,15 +333,7 @@ class GAPotential(LammpsPotential):
             with subprocess.Popen(exe_command, stdout=subprocess.PIPE) as p:
                 stdout = p.communicate()[0]
                 rc = p.returncode
-            if rc != 0:
-                error_msg = f"gap_fit exited with return code {rc}"
-                msg = stdout.decode("utf-8").split("\n")[:-1]
-                try:
-                    error_line = next(i for i, m in enumerate(msg) if m.startswith("ERROR"))
-                    error_msg += ", ".join(msg[error_line:])
-                except Exception:
-                    error_msg += msg[-1]
-                raise RuntimeError(error_msg)
+            _check_returncode("gap_fit", rc, stdout)
 
             def get_xml(xml_file):
                 tree = ET.parse(xml_file)
@@ -428,7 +419,7 @@ class GAPotential(LammpsPotential):
         )
         if not which("quip"):
             raise RuntimeError(
-                "quip has not been found.\n", "Please refer to https://github.com/libAtoms/QUIP for ", "further detail."
+                "quip has not been found.\nPlease refer to https://github.com/libAtoms/QUIP for further detail."
             )
         xml_file = "predict.xml"
         original_file = "original.xyz"
@@ -496,7 +487,10 @@ class GAPotential(LammpsPotential):
                 gp_descriptor_text = gp_descriptor.findtext(".")
                 Z_pattern = re.compile(" Z=(.*?) ", re.S)
                 element = str(get_el_sp(int(Z_pattern.findall(gp_descriptor_text)[0])))
-                param = np.loadtxt(gpcoordinates.get("sparseX_filename"))
+                # sparseX files are referenced relative to the xml file, not the cwd.
+                xml_dir = os.path.dirname(os.path.abspath(xml_file))
+                sparse_x_file = os.path.join(xml_dir, gpcoordinates.get("sparseX_filename"))
+                param = np.loadtxt(sparse_x_file)
                 element_param[element] = param.tolist()
 
             return tree, element_param, potential_label
