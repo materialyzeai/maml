@@ -55,7 +55,7 @@ pip install "maml[deep]"      # TensorFlow, for Keras models and AtomSets
 | All potentials (property calculations) | [LAMMPS](https://www.lammps.org) (`conda install -c conda-forge lammps`) |
 | SNAP / qSNAP | LAMMPS (built in) |
 | GAP | [QUIP](https://github.com/libAtoms/QUIP) with the GAP package, and LAMMPS built with `ML-QUIP` |
-| MTP | [MLIP](https://gitlab.com/ashapeev/mlip-2) and its LAMMPS interface |
+| MTP | [MLIP-3](https://gitlab.com/ashapeev/mlip-3) (default; MLIP-2 via `MTPotential(version="mlip-2")`). LAMMPS-based MTP calculations currently require MLIP-2 and its LAMMPS interface |
 | NNP | [n2p2](https://github.com/CompPhysVienna/n2p2) |
 
 ## Development

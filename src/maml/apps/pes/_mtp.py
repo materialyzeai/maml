@@ -181,12 +181,12 @@ class MTPotential(LammpsPotential):
         Args:
             name (str): Name of force field.
             param (dict): The parameter configuration of potentials.
-            version (str): The version of mlip package: "mlip-2" (default), "mlip-3" or
+            version (str): The version of mlip package: "mlip-3" (default), "mlip-2" or
                 "mlip-dev". With "mlip-3", train() and evaluate() are supported, but the LAMMPS
                 based methods (write_param, write_ini and everything built on them) are not, since
                 MLIP-3's LAMMPS interface is a separate package with its own input format.
         """
-        version = version if version else "mlip-2"
+        version = version if version else "mlip-3"
         if version not in SUPPORTED_VERSIONS:
             raise ValueError(f"Unsupported mlip version {version!r}. Choose from {SUPPORTED_VERSIONS}.")
         self.name = name if name else "MTPotential"
@@ -302,7 +302,6 @@ class MTPotential(LammpsPotential):
         Write mlip.ini file for mlip packages of version mlip-2 or mlip-dev. Not supported for
         mlip-3, whose LAMMPS interface is a separate package.
         Supported keyword arguments are parallel with options stated in the mlip manuals.
-        mlip-2 is recommended, as it is the only officially supported version by mlip.
         Please refer to https://mlip.skoltech.ru.
 
         Args:
@@ -963,7 +962,7 @@ class MTPotential(LammpsPotential):
             filename (str): The file storing parameters of potentials, filename should
                 ends with ".mtp". Potentials trained by MLIP-2 or MLIP-3 can be read.
             elements (list): The list of elements.
-            version (str): The version of mlip package, see MTPotential. Default is "mlip-2".
+            version (str): The version of mlip package, see MTPotential. Default is "mlip-3".
 
         Returns:
             MTPotential

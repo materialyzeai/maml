@@ -177,7 +177,7 @@ def test_feed(kwargs, expected):
 
 
 def test_write_read_require_elements(in_tmp, datapool):
-    mtp = MTPotential()
+    mtp = MTPotential(version="mlip-2")
     with pytest.raises(ValueError, match="No species given"):
         mtp.write_cfg("x.cfgs", datapool[:1])
     with pytest.raises(ValueError, match="No species given"):
@@ -204,7 +204,7 @@ def test_write_read_cfgs_versions(in_tmp, datapool, version, header):
 
 def test_write_ini_mlip2(in_tmp):
     # Regression: integer/float options used to crash the string formatter.
-    mtp = MTPotential()
+    mtp = MTPotential(version="mlip-2")
     filename = mtp.write_ini(
         mtp_filename="pot.mtp",
         write_cfgs="out.cfgs",
@@ -263,7 +263,7 @@ def test_write_ini_mlip_dev(in_tmp):
 
 
 def test_from_config_write_param_roundtrip(in_tmp):
-    mtp = MTPotential.from_config(config_file, elements=["Mo"])
+    mtp = MTPotential.from_config(config_file, elements=["Mo"], version="mlip-2")
     assert mtp.elements == ["Mo"]
     assert mtp.param["species_coeffs"] == [-9.118920883237898]
     assert len(mtp.param["moment_coeffs"]) == 9
@@ -276,20 +276,20 @@ def test_from_config_write_param_roundtrip(in_tmp):
 
 def test_write_param_without_param():
     with pytest.raises(RuntimeError, match="parameters should be provided"):
-        MTPotential().write_param()
+        MTPotential(version="mlip-2").write_param()
 
 
 @pytest.mark.parametrize("method", ["train", "evaluate"])
 def test_missing_mlp(fake_mlp_bin, train_data, method):
     fake_mlp_bin(available=set())
     with pytest.raises(RuntimeError, match="mlp has not been found") as excinfo:
-        getattr(MTPotential(), method)(*train_data)
+        getattr(MTPotential(version="mlip-2"), method)(*train_data)
     assert len(excinfo.value.args) == 1
 
 
 def test_train(fake_mlp_bin, train_data):
     calls = fake_mlp_bin()
-    mtp = MTPotential()
+    mtp = MTPotential(version="mlip-2")
     assert mtp.train(*train_data, max_dist=4.5, radial_basis_size=6, max_iter=7, stress_weight=0) == 0
     assert mtp.elements == ["Mo"]
     # The minimum distance is computed in Python; `mlp mindist` is no longer called.
@@ -317,13 +317,13 @@ def test_train(fake_mlp_bin, train_data):
     assert "max_dist = 4.500000" in unfitted
     assert "radial_basis_size = 6" in unfitted
     assert calls.file("train.cfgs").count("BEGIN_CFG") == len(train_data[0])
-    assert mtp.param == MTPotential.from_config(config_file, ["Mo"]).param
+    assert mtp.param == MTPotential.from_config(config_file, ["Mo"], version="mlip-2").param
 
 
 def test_train_no_unfitted_mtp(fake_mlp_bin, train_data):
     fake_mlp_bin()
     with pytest.raises(RuntimeError, match="No specific parameter file"):
-        MTPotential().train(*train_data, unfitted_mtp="")
+        MTPotential(version="mlip-2").train(*train_data, unfitted_mtp="")
 
 
 def test_train_failure(fake_mlp_bin, train_data):
@@ -334,7 +334,7 @@ def test_train_failure(fake_mlp_bin, train_data):
 
     fake_mlp_bin(handler)
     with pytest.raises(RuntimeError, match="mlp train exited with return code 2") as excinfo:
-        MTPotential().train(*train_data)
+        MTPotential(version="mlip-2").train(*train_data)
     msg = str(excinfo.value)
     assert "ERROR: Too few configurations" in msg
     assert 'version="mlip-2"' in msg
@@ -351,7 +351,7 @@ def test_train_failure_reports_stderr(fake_mlp_bin, train_data):
 
     fake_mlp_bin(handler)
     with pytest.raises(RuntimeError, match="mlp train exited with return code 1") as excinfo:
-        MTPotential().train(*train_data)
+        MTPotential(version="mlip-2").train(*train_data)
     assert "mlp stderr" in str(excinfo.value)
     assert "Unknown option --bfgs-conv-tol" in str(excinfo.value)
 
@@ -365,7 +365,7 @@ def test_train_without_mlp_mindist(fake_mlp_bin, train_data):
         return fake_mlp(args)
 
     calls = fake_mlp_bin(handler)
-    mtp = MTPotential()
+    mtp = MTPotential(version="mlip-2")
     assert mtp.train(*train_data) == 0
     assert all(call[1] != "mindist" for call in calls)
     assert f"min_dist = {min_interatomic_distance(train_data[0]):f}" in calls.file("08g.mtp")
@@ -390,7 +390,7 @@ def test_train_diverged(fake_mlp_bin, train_data):
         return fake_mlp(args)
 
     fake_mlp_bin(handler)
-    mtp = MTPotential()
+    mtp = MTPotential(version="mlip-2")
     with pytest.raises(RuntimeError, match="MTP training diverged") as excinfo:
         mtp.train(*train_data)
     msg = str(excinfo.value)
@@ -420,7 +420,7 @@ def test_train_unusable_fitted_mtp(fake_mlp_bin, train_data, last_line):
 
     fake_mlp_bin(handler)
     with pytest.raises(RuntimeError, match="MTP training diverged"):
-        MTPotential().train(*train_data)
+        MTPotential(version="mlip-2").train(*train_data)
 
 
 def test_train_missing_fitted_mtp(fake_mlp_bin, train_data):
@@ -431,7 +431,7 @@ def test_train_missing_fitted_mtp(fake_mlp_bin, train_data):
 
     fake_mlp_bin(handler)
     with pytest.raises(RuntimeError, match=r"did not write the fitted potential 08g_fitted\.mtp") as excinfo:
-        MTPotential().train(*train_data)
+        MTPotential(version="mlip-2").train(*train_data)
     assert "something went wrong" in str(excinfo.value)
 
 
@@ -482,7 +482,7 @@ def test_min_interatomic_distance_empty():
 @pytest.mark.parametrize(("version", "shift"), [("mlip-2", 1.0), ("mlip-dev", 2.0)])
 def test_evaluate(fake_mlp_bin, train_data, version, shift):
     calls = fake_mlp_bin()
-    mtp = MTPotential.from_config(config_file, elements=["Mo"])
+    mtp = MTPotential.from_config(config_file, elements=["Mo"], version="mlip-2")
     mtp.version = version
     df_orig, df_predict = mtp.evaluate(*train_data)
     if version == "mlip-2":
@@ -498,7 +498,7 @@ def test_evaluate(fake_mlp_bin, train_data, version, shift):
 
 def test_evaluate_failure(fake_mlp_bin, train_data):
     fake_mlp_bin(lambda args: (1, "", ""))
-    mtp = MTPotential.from_config(config_file, elements=["Mo"])
+    mtp = MTPotential.from_config(config_file, elements=["Mo"], version="mlip-2")
     with pytest.raises(RuntimeError, match=r"mlp exited with return code 1$"):
         mtp.evaluate(*train_data)
 
@@ -628,7 +628,7 @@ def test_train_mlip3(fake_mlp_bin, train_data):
     assert "max_dist = 4.500000" in unfitted
     # MLIP-3 needs PlusStress blocks, the format its cfg reader shares with MLIP-2.
     assert "PlusStress:  xx" in calls.file("train.cfgs")
-    expected = MTPotential.from_config(config_file, ["Mo"]).param
+    expected = MTPotential.from_config(config_file, ["Mo"], version="mlip-2").param
     assert mtp.param["safe"] == expected["safe"]
     assert not any("MVS" in line for line in mtp.param["safe"])
     np.testing.assert_allclose(mtp.param["species_coeffs"], expected["species_coeffs"], rtol=1e-14)
@@ -712,7 +712,71 @@ def test_mlip2_version_with_mlip3_binary(fake_mlp_bin, train_data):
         MTPotential(version="mlip-2").train(*train_data)
     assert 'version="mlip-3"' in str(excinfo.value)
 
-    mtp = MTPotential.from_config(config_file, elements=["Mo"])
+    mtp = MTPotential.from_config(config_file, elements=["Mo"], version="mlip-2")
     with pytest.raises(RuntimeError, match="mlp calc-efs did not write the predicted configurations") as excinfo:
         mtp.evaluate(*train_data)
     assert "Error: command calc-efs does not exist." in str(excinfo.value)
+
+
+# ---------------------------------------------------------------------------
+# Integration tests against a real MLIP-3 `mlp` (built in CI; skipped otherwise).
+# ---------------------------------------------------------------------------
+
+NOTEBOOK_DATA = Path(__file__).parents[3] / "notebooks" / "pes" / "mtp" / "data.json"
+
+
+def _real_mlip3() -> bool:
+    if not which("mlp"):
+        return False
+    import subprocess
+
+    out = subprocess.run(["mlp", "list"], capture_output=True, text=True, check=False).stdout
+    return "calculate_efs" in out
+
+
+requires_mlip3 = pytest.mark.skipif(not _real_mlip3(), reason="real MLIP-3 mlp not on PATH")
+
+
+@pytest.fixture(scope="module")
+def notebook_data():
+    data = loadfn(NOTEBOOK_DATA)
+    return (
+        [d["structure"] for d in data],
+        [d["outputs"]["energy"] for d in data],
+        [d["outputs"]["forces"] for d in data],
+        [d["outputs"]["stress"] for d in data],
+    )
+
+
+@requires_mlip3
+def test_real_mlip3_train_evaluate(in_tmp, notebook_data):
+    # Regression for #702: the notebook example (no stresses, stress_weight=0) must train to a finite,
+    # accurate potential with the default version.
+    structures, energies, forces, stresses = notebook_data
+    mtp = MTPotential()
+    assert mtp.version == "mlip-3"
+    mtp.train(structures, energies, forces, train_stresses=None, max_dist=5, stress_weight=0, max_iter=100)
+    df_orig, df_pred = mtp.evaluate(structures, energies, forces, stresses)
+
+    def per_atom_energy(df):
+        e = df[df["dtype"] == "energy"]
+        return (e["y_orig"] / e["n"]).to_numpy()
+
+    def force_components(df):
+        return df[df["dtype"] == "force"]["y_orig"].to_numpy()
+
+    e_pred, f_pred = per_atom_energy(df_pred), force_components(df_pred)
+    assert np.isfinite(e_pred).all()
+    assert np.isfinite(f_pred).all()
+    assert np.abs(per_atom_energy(df_orig) - e_pred).mean() < 0.02  # eV/atom
+    assert np.abs(force_components(df_orig) - f_pred).mean() < 0.5  # eV/A
+
+
+@requires_mlip3
+def test_real_mlip3_rejects_mlip2_version(in_tmp, notebook_data):
+    # MLIP-3 silently ignores MLIP-2 options (training with default weights), so the mismatch must be
+    # reported instead of producing a bad or NaN potential.
+    # MLIP-3 also ignores --max-iter, so keep the training set tiny.
+    structures, energies, forces, _ = (x[:2] for x in notebook_data)
+    with pytest.raises(RuntimeError, match='version="mlip-3"'):
+        MTPotential(version="mlip-2").train(structures, energies, forces, None, max_dist=5, max_iter=5)
