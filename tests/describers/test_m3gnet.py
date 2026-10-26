@@ -1,92 +1,44 @@
 """Tests for the legacy TF M3GNet describers.
 
-The TF-based ``m3gnet`` package is not installable alongside current TensorFlow, so the
-``m3gnet`` modules are replaced by lightweight fakes to exercise maml's own logic.
+The TF-based ``m3gnet`` package is not installable alongside current TensorFlow, so it is replaced by
+the lightweight fake in ``fake_m3gnet/`` to exercise maml's own logic.
 """
 
 from __future__ import annotations
 
+import importlib
+import pickle
 import sys
-import types
+from pathlib import Path
 
 import numpy as np
 import pandas as pd
 import pytest
+from joblib import parallel_config
 from pymatgen.core import Lattice, Structure
 
 from maml.describers import M3GNetSite, M3GNetStructure, _m3gnet
 
-ATOMS, BONDS = 0, 1
+FAKE_M3GNET_DIR = Path(__file__).parent / "fake_m3gnet"
 N_FEAT = 4
 
 
-class _Converter:
-    def convert(self, structure):
-        return types.SimpleNamespace(as_list=lambda: [np.zeros((len(structure), N_FEAT)), "bonds", len(structure)])
-
-
-class _GraphLayer:
-    """Adds ``offset`` to atom features, so each block's output is distinguishable."""
-
-    def __init__(self, offset: float):
-        self.offset = offset
-
-    def __call__(self, g):
-        g = list(g)
-        g[ATOMS] = g[ATOMS] + self.offset
-        return g
-
-
-class _Readout:
-    def __init__(self, n_out: int):
-        self.n_out = n_out
-
-    def __call__(self, g):
-        return np.full((1, self.n_out), g[ATOMS].sum())
-
-
-class FakeM3GNet:
-    n_blocks = 3
-    threebody_cutoff = 4.0
-    loaded_from: list[str] = []
-
-    def __init__(self):
-        self.graph_converter = _Converter()
-        self.three_interactions = [lambda g, basis, cutoff: g for _ in range(self.n_blocks)]
-        self.graph_layers = [_GraphLayer(i + 1) for i in range(self.n_blocks)]
-        self.layers = [None, types.SimpleNamespace(layers=[_Readout(5)]), None]
-
-    @classmethod
-    def from_dir(cls, path):
-        cls.loaded_from.append(path)
-        return cls()
-
-    def basis_expansion(self, graph):
-        return "basis"
-
-    def featurizer(self, graph):
-        g = list(graph)
-        g[ATOMS] = g[ATOMS] + 0.5  # embedding output
-        return g
-
-    def feature_adjust(self, g):
-        return g
+def _drop_m3gnet_modules():
+    for name in [m for m in sys.modules if m == "m3gnet" or m.startswith("m3gnet.")]:
+        del sys.modules[name]
 
 
 @pytest.fixture
 def fake_m3gnet(monkeypatch):
-    FakeM3GNet.loaded_from = []
-    pkg = types.ModuleType("m3gnet")
-    models = types.ModuleType("m3gnet.models")
-    models.M3GNet = FakeM3GNet
-    graph = types.ModuleType("m3gnet.graph")
-    graph.Index = types.SimpleNamespace(ATOMS=ATOMS, BONDS=BONDS)
-    graph.tf_compute_distance_angle = lambda g: g
-    layers = types.ModuleType("m3gnet.layers")
-    layers.polynomial = lambda bonds, cutoff: ("cutoff", bonds, cutoff)
-    for name, mod in {"m3gnet": pkg, "m3gnet.models": models, "m3gnet.graph": graph, "m3gnet.layers": layers}.items():
-        monkeypatch.setitem(sys.modules, name, mod)
-    return FakeM3GNet
+    """Put the fake ``m3gnet`` on sys.path, which joblib also hands to the worker processes it spawns."""
+    _drop_m3gnet_modules()
+    monkeypatch.syspath_prepend(str(FAKE_M3GNET_DIR))
+    fake = importlib.import_module("m3gnet.models").M3GNet
+    fake.loaded_from = []
+    _m3gnet._cached_m3gnet_model.cache_clear()
+    yield fake
+    _m3gnet._cached_m3gnet_model.cache_clear()
+    _drop_m3gnet_modules()
 
 
 @pytest.fixture(scope="module")
@@ -139,3 +91,32 @@ def test_site_transform(fake_m3gnet, nacl):
 def test_site_invalid_output_layers(fake_m3gnet, output_layers):
     with pytest.raises(ValueError, match="Invalid output_layers"):
         M3GNetSite(output_layers=output_layers)
+
+
+@pytest.mark.parametrize("cls", [M3GNetStructure, M3GNetSite])
+def test_pickle_drops_and_reloads_model(fake_m3gnet, nacl, cls):
+    describer = cls(model_path="/my/model")
+    with pytest.raises(TypeError, match="weakref"):
+        pickle.dumps(describer.describer_model)
+    restored = pickle.loads(pickle.dumps(describer))
+    assert isinstance(restored.describer_model, fake_m3gnet)
+    assert restored.describer_model is not describer.describer_model
+    assert fake_m3gnet.loaded_from == ["/my/model", "/my/model"]
+    assert restored.get_params() == describer.get_params()
+    np.testing.assert_array_equal(np.asarray(restored.transform_one(nacl)), np.asarray(describer.transform_one(nacl)))
+    # A second unpickle in the same process reuses the loaded model.
+    assert pickle.loads(pickle.dumps(describer)).describer_model is restored.describer_model
+
+
+@pytest.mark.parametrize(("cls", "kwargs"), [(M3GNetStructure, {}), (M3GNetSite, {"feature_batch": "pandas_concat"})])
+def test_parallel_transform(fake_m3gnet, nacl, cls, kwargs):
+    """Regression test for #637: M3GNet describers with n_jobs > 1 failed to pickle the TF model.
+
+    The tasks go to real loky worker processes, as in the original report. A distinct ``idle_worker_timeout``
+    makes joblib start fresh workers, which inherit the sys.path that holds the fake ``m3gnet``.
+    """
+    structures = [nacl, nacl.copy().scale_lattice(1.1 * nacl.volume)]
+    serial = np.asarray(cls(**kwargs).transform(structures))
+    with parallel_config(backend="loky", idle_worker_timeout=37):
+        parallel = np.asarray(cls(n_jobs=2, **kwargs).transform(structures))
+    np.testing.assert_array_equal(parallel, serial)

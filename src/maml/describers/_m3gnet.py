@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import functools
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -24,6 +25,34 @@ def _load_m3gnet_model(model_path: str | None):
     return M3GNet.from_dir(path), path
 
 
+@functools.lru_cache(maxsize=4)
+def _cached_m3gnet_model(model_path: str):
+    """Load an M3GNet model at most once per process, for describers restored from a pickle."""
+    return _load_m3gnet_model(model_path)[0]
+
+
+class _PickleByModelPath:
+    """Pickle an M3GNet describer by its ``model_path`` instead of by its TensorFlow model.
+
+    TF models cannot be pickled (``cannot pickle 'weakref.ReferenceType' object``), which broke ``n_jobs``
+    (joblib process workers) and the ``memory`` cache. The model is dropped on pickling and reloaded from
+    ``model_path`` on unpickling, once per process.
+    """
+
+    model_path: str
+
+    def __getstate__(self) -> dict:
+        """Return the describer state without the loaded model."""
+        state = dict(super().__getstate__())  # type: ignore[call-overload]
+        state["describer_model"] = None
+        return state
+
+    def __setstate__(self, state: dict) -> None:
+        """Restore the describer state and reload the model from ``model_path``."""
+        super().__setstate__(state)  # type: ignore[misc]
+        self.describer_model = _cached_m3gnet_model(self.model_path)
+
+
 def _compute_graph(describer_model, structure):
     """Run the shared M3GNet graph -> features pipeline up to the per-block layers."""
     from m3gnet.graph import Index, tf_compute_distance_angle
@@ -38,7 +67,7 @@ def _compute_graph(describer_model, structure):
 
 
 @describer_type("structure")
-class M3GNetStructure(BaseDescriber):
+class M3GNetStructure(_PickleByModelPath, BaseDescriber):
     """Use M3GNet pre-trained models as featurizer to get Structural features."""
 
     def __init__(
@@ -77,7 +106,7 @@ class M3GNetStructure(BaseDescriber):
 
 
 @describer_type("site")
-class M3GNetSite(BaseDescriber):
+class M3GNetSite(_PickleByModelPath, BaseDescriber):
     """Use M3GNet pre-trained models as featurizer to get atomic features."""
 
     def __init__(
