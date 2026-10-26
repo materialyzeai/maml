@@ -137,3 +137,30 @@ def test_structure_transform_real_model(default_model, monkeypatch, nacl):
     feats = np.array(struct_feat_2s)
     assert feats.shape == (2, 128)
     np.testing.assert_allclose(feats[0], feats[1])
+
+
+def test_load_restores_set2set_readout_weights(default_model, nacl):
+    """The Set2Set LSTM must come from the checkpoint, not random init, so every load gives the same features."""
+    reloaded, _ = _matgl._load_matgl_model(None)
+    for key, value in default_model.state_dict().items():
+        torch.testing.assert_close(reloaded.state_dict()[key], value, rtol=0, atol=0, msg=key)
+    default_model.predict_structure(nacl)
+    expected = default_model.feature_dict["readout"]
+    reloaded.predict_structure(nacl)
+    torch.testing.assert_close(reloaded.feature_dict["readout"], expected, rtol=0, atol=0)
+
+
+def test_local_model_dir(tmp_path):
+    for fn in _matgl._MODEL_FILES:
+        (tmp_path / fn).touch()
+    assert _matgl._local_model_dir(str(tmp_path)) == tmp_path
+    assert _matgl._local_model_dir(str(tmp_path / "missing")) is None
+    assert _matgl._local_model_dir("not-a-cached-model") is None
+
+
+def test_restore_set2set_weights_noop_without_local_files():
+    model = torch.nn.Linear(2, 2)
+    before = {k: v.clone() for k, v in model.state_dict().items()}
+    _matgl._restore_set2set_weights(model, "not-a-cached-model")
+    for key, value in model.state_dict().items():
+        torch.testing.assert_close(value, before[key])
