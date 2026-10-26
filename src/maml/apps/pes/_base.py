@@ -80,3 +80,29 @@ class Potential(PotentialMixin, BaseModel):  # type: ignore
     Potential models that can be used to fit structure-[energy, force, stress]
     pairs.
     """
+
+
+def _check_returncode(program: str, returncode: int, output: bytes | None) -> None:
+    """
+    Raise an informative RuntimeError if an external program failed.
+
+    Args:
+        program (str): Name of the program, used in the error message.
+        returncode (int): Return code of the finished process.
+        output (bytes | None): Captured stdout/stderr of the process. The lines
+            from the first one starting with "ERROR" onwards are reported, or
+            the last line if no such line exists.
+
+    Raises:
+        RuntimeError: If returncode is non-zero.
+    """
+    if returncode == 0:
+        return
+    error_msg = f"{program} exited with return code {returncode}"
+    lines = [line for line in (output or b"").decode("utf-8", errors="replace").splitlines() if line.strip()]
+    error_line = next((i for i, line in enumerate(lines) if line.startswith("ERROR")), None)
+    if error_line is not None:
+        error_msg += ": " + ", ".join(lines[error_line:])
+    elif lines:
+        error_msg += ": " + lines[-1]
+    raise RuntimeError(error_msg)

@@ -18,7 +18,7 @@ from monty.tempfile import ScratchDir
 from pymatgen.core import Element, Lattice, Structure
 from pymatgen.io.lammps.data import LammpsData
 
-from maml.apps.pes._base import Potential
+from maml.apps.pes._base import Potential, _check_returncode
 from maml.utils import get_lammps_lattice_and_rotation, stress_list_to_matrix, stress_matrix_to_list
 
 logging.basicConfig()
@@ -55,7 +55,7 @@ def _pretty_input(lines):
     return "\n".join(new_lines)
 
 
-def _read_dump(file_name, dtype="float_"):
+def _read_dump(file_name, dtype="float"):
     with open(file_name) as f:
         lines = f.readlines()[9:]
     return np.loadtxt(io.StringIO("".join(lines)), dtype=dtype)
@@ -80,7 +80,7 @@ class LMPStaticCalculator:
         lmp_exe = kwargs.pop("lmp_exe", None)
         if lmp_exe is None:
             lmp_exe = get_default_lmp_exe()
-        if not which(lmp_exe):
+        if lmp_exe is None or not which(lmp_exe):
             raise ValueError(f"lammps executable {lmp_exe} not found")
         self.LMP_EXE = lmp_exe
         for i, j in kwargs.items():
@@ -130,21 +130,15 @@ class LMPStaticCalculator:
             input_file = self._setup()
             data = []
             for struct in structures:
+                # Work on a copy so that the caller's structures are not modified.
+                struct = struct.copy()
                 struct.remove_oxidation_states()
                 ld = LammpsData.from_structure(struct, ff_elements, atom_style="charge")
                 ld.write_file("data.static")
                 with subprocess.Popen([self.LMP_EXE, "-in", input_file], stdout=subprocess.PIPE) as p:
                     stdout = p.communicate()[0]
                     rc = p.returncode
-                if rc != 0:
-                    error_msg = f"LAMMPS exited with return code {rc}"
-                    msg = stdout.decode("utf-8").split("\n")[:-1]
-                    try:
-                        error_line = next(i for i, m in enumerate(msg) if m.startswith("ERROR"))
-                        error_msg += ", ".join(msg[error_line:])
-                    except Exception:
-                        error_msg += msg[-1]
-                    raise RuntimeError(error_msg)
+                _check_returncode("LAMMPS", rc, stdout)
                 results = self._parse()
                 data.append(results)
         return data
@@ -509,7 +503,7 @@ class NudgedElasticBand(LMPStaticCalculator):
             neb_template = f.read()
 
         unit_cell = self.get_unit_cell(specie=self.specie, lattice=self.lattice, alat=self.alat)
-        lattice_calculator = LatticeConstant(ff_settings=self.ff_settings)
+        lattice_calculator = LatticeConstant(ff_settings=self.ff_settings, lmp_exe=self.LMP_EXE)
         a, _, _ = lattice_calculator.calculate([unit_cell])[0]
         unit_cell = self.get_unit_cell(specie=self.specie, lattice=self.lattice, alat=a)
 
@@ -546,15 +540,7 @@ class NudgedElasticBand(LMPStaticCalculator):
         with subprocess.Popen([self.LMP_EXE, "-in", "in.relax"], stdout=subprocess.PIPE) as p:
             stdout = p.communicate()[0]
             rc = p.returncode
-        if rc != 0:
-            error_msg = f"LAMMPS exited with return code {rc}"
-            msg = stdout.decode("utf-8").split("\n")[:-1]
-            try:
-                error_line = next(i for i, m in enumerate(msg) if m.startswith("ERROR"))
-                error_msg += ", ".join(msg[error_line:])
-            except Exception:
-                error_msg += msg[-1]
-            raise RuntimeError(error_msg)
+        _check_returncode("LAMMPS", rc, stdout)
 
         with open("in.relax", "w") as f:
             f.write(
@@ -571,15 +557,7 @@ class NudgedElasticBand(LMPStaticCalculator):
         with subprocess.Popen([self.LMP_EXE, "-in", "in.relax"], stdout=subprocess.PIPE) as p:
             stdout = p.communicate()[0]
             rc = p.returncode
-        if rc != 0:
-            error_msg = f"LAMMPS exited with return code {rc}"
-            msg = stdout.decode("utf-8").split("\n")[:-1]
-            try:
-                error_line = next(i for i, m in enumerate(msg) if m.startswith("ERROR"))
-                error_msg += ", ".join(msg[error_line:])
-            except Exception:
-                error_msg += msg[-1]
-            raise RuntimeError(error_msg)
+        _check_returncode("LAMMPS", rc, stdout)
 
         final_relaxed_struct = LammpsData.from_file("final.relaxed", atom_style="charge").structure
 
@@ -627,16 +605,7 @@ class NudgedElasticBand(LMPStaticCalculator):
             ) as p:
                 stdout = p.communicate()[0]
                 rc = p.returncode
-            if rc != 0:
-                error_msg = f"LAMMPS exited with return code {rc}"
-                msg = stdout.decode("utf-8").split("\n")[:-1]
-                try:
-                    error_line = next(i for i, m in enumerate(msg) if m.startswith("ERROR"))
-                    error_msg += ", ".join(msg[error_line:])
-                except Exception:
-                    logger.info(f"NudgedElasticBand error with message {msg}")
-                    error_msg += msg[-1]
-                raise RuntimeError(error_msg)
+            _check_returncode("LAMMPS", rc, stdout)
             return self._parse()
 
     def _sanity_check(self, structure):
@@ -704,7 +673,7 @@ class DefectFormation(LMPStaticCalculator):
             defect_template = f.read()
 
         unit_cell = self.get_unit_cell(specie=self.specie, lattice=self.lattice, alat=self.alat)
-        lattice_calculator = LatticeConstant(ff_settings=self.ff_settings)
+        lattice_calculator = LatticeConstant(ff_settings=self.ff_settings, lmp_exe=self.LMP_EXE)
         a, _, _ = lattice_calculator.calculate([unit_cell])[0]
         unit_cell = self.get_unit_cell(specie=self.specie, lattice=self.lattice, alat=a)
 
@@ -718,7 +687,7 @@ class DefectFormation(LMPStaticCalculator):
             raise ValueError("Lattice type is invalid.")
 
         super_cell = unit_cell * scale_factor
-        efs_calculator = EnergyForceStress(ff_settings=self.ff_settings)
+        efs_calculator = EnergyForceStress(ff_settings=self.ff_settings, lmp_exe=self.LMP_EXE)
         energy_per_atom = efs_calculator.calculate([super_cell])[0][0] / len(super_cell)
 
         super_cell_ld = LammpsData.from_structure(
@@ -749,15 +718,7 @@ class DefectFormation(LMPStaticCalculator):
             with subprocess.Popen([self.LMP_EXE, "-in", input_file], stdout=subprocess.PIPE) as p:
                 stdout = p.communicate()[0]
                 rc = p.returncode
-            if rc != 0:
-                error_msg = f"LAMMPS exited with return code {rc}"
-                msg = stdout.decode("utf-8").split("\n")[:-1]
-                try:
-                    error_line = next(i for i, m in enumerate(msg) if m.startswith("ERROR"))
-                    error_msg += ", ".join(msg[error_line:])
-                except Exception:
-                    error_msg += msg[-1]
-                raise RuntimeError(error_msg)
+            _check_returncode("LAMMPS", rc, stdout)
             defect_energy, _, _ = self._parse()
         return defect_energy - energy_per_atom * num_atoms
 
@@ -856,7 +817,7 @@ class LMPRelaxationCalculator(LMPStaticCalculator):
         """Parse results from dump files."""
         ld = LammpsData.from_file("data.relaxed", atom_style="charge")
         final_structure = ld.structure
-        efs_calculator = EnergyForceStress(ff_settings=self.ff_settings)
+        efs_calculator = EnergyForceStress(ff_settings=self.ff_settings, lmp_exe=self.LMP_EXE)
         energy, forces, stresses = efs_calculator.calculate([final_structure])[0]
         return final_structure, energy, forces, stresses
 
