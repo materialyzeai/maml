@@ -121,10 +121,14 @@ def propose_query_point(
         # Minimize objective is the negative acquisition function
         return -acquisition(x.reshape(-1, dim), gpr=gpr, y_max=y_max, noise=noise)
 
-    # make sure that the initial conditions fall into the bounds
-    x0 = np.clip(x_max, bounds[:, 0] + 3 * EPS, bounds[:, 1] - 3 * EPS)
+    # The GPR (and hence the acquisition function) lives in the scaled space,
+    # so the local optimization must be bounded in the scaled space as well.
+    scaled_bounds = np.sort(np.asarray(scaler.transform(np.asarray(bounds, dtype=float).T)).T, axis=1)
 
-    res = minimize(min_obj, x0=x0, bounds=bounds, method="L-BFGS-B")
+    # make sure that the initial conditions fall into the bounds
+    x0 = np.clip(x_max, scaled_bounds[:, 0] + 3 * EPS, scaled_bounds[:, 1] - 3 * EPS)
+
+    res = minimize(min_obj, x0=x0, bounds=scaled_bounds, method="L-BFGS-B")
     if -float(res.fun) >= acq_max:
         x_max = res.x
     return _trunc(scaler.inverse_transform(x_max), decimals=3)
