@@ -72,7 +72,7 @@ class MEGNetSite(BaseDescriber):
         self.describer_model = _load_model(name)
 
         if level is None:
-            level = sum(i.startswith("meg_net") for i in self.describer_model.valid_names) // 3
+            level = sum(i.startswith(("meg_net", "megnet")) for i in self.describer_model.valid_names) // 3
         self.name = name
         self.level = level
         super().__init__(**kwargs)
