@@ -3,9 +3,10 @@ from __future__ import annotations
 import unittest
 
 import numpy as np
+import pytest
 from scipy.stats import kurtosis, skew
 
-from maml.utils import Stats
+from maml.utils import Stats, get_full_stats_and_funcs, stats_list_conversion
 
 
 class TestStats(unittest.TestCase):
@@ -71,6 +72,75 @@ class TestStats(unittest.TestCase):
         self.assertAlmostEqual(
             Stats.mean_absolute_deviation(self.x), np.mean(np.abs(np.array(self.x) - np.mean(self.x)))
         )
+
+
+def test_mean_absolute_error_alias():
+    x = [1.0, 2.0, 6.0]
+    assert Stats.mean_absolute_error(x) == pytest.approx(Stats.mean_absolute_deviation(x))
+    assert Stats.mean_absolute_error(x) == pytest.approx(2.0)
+
+
+def test_moment_max_order_overrides_order():
+    x = [1.0, 2.0, 6.0]
+    assert Stats.moment(x, order=3, max_order=2) == pytest.approx([np.mean(x), np.std(x)])
+
+
+@pytest.mark.parametrize("func", [Stats.skewness, Stats.kurtosis])
+def test_skew_kurtosis_constant_data(func):
+    # std ~ 0 is replaced by 1 to avoid division by zero; all central moments are 0
+    assert func([2.0, 2.0, 2.0]) == pytest.approx(0.0)
+
+
+@pytest.mark.parametrize("data", [[1.0, -1.0], [0.0, 2.0]])
+def test_power_mean_non_positive_raises(data):
+    with pytest.raises(ValueError, match="Not possible to calculate geometric means"):
+        Stats.power_mean(data)
+
+
+def test_power_mean_unweighted():
+    assert Stats.power_mean([1.0, 3.0], p=1) == pytest.approx(2.0)
+    assert Stats.power_mean([1.0, 4.0], p=0) == pytest.approx(2.0)
+
+
+@pytest.mark.xfail(
+    reason="_root_moment centers higher-order moments on the unweighted mean, so weighted std/skewness/kurtosis "
+    "are wrong. Fixing changes ElementStats features, so it needs a maintainer decision.",
+    strict=True,
+)
+def test_weighted_std_uses_weighted_mean():
+    # all weight on a single point -> zero spread
+    assert Stats.std([0.0, 10.0], weights=[1.0, 0.0]) == pytest.approx(0.0)
+
+
+@pytest.mark.parametrize(
+    ("stats", "expected"),
+    [
+        (["mean", "std"], ["mean", "std"]),
+        (["moment:None:3"], ["moment:1:None", "moment:2:None", "moment:3:None"]),
+        (["moment:2:None"], ["moment:2:None"]),
+        (["moment:None:0"], ["moment:0:None"]),
+        (["shifted_geometric_mean:50"], ["shifted_geometric_mean:50"]),
+    ],
+)
+def test_stats_list_conversion(stats, expected):
+    assert stats_list_conversion(stats) == expected
+
+
+def test_get_full_stats_and_funcs():
+    x = [1.0, 2.0, 6.0]
+    names, funcs = get_full_stats_and_funcs(["mean", "moment:None:2", "shifted_geometric_mean:10"])
+    assert names == ["mean", "moment:1:None", "moment:2:None", "shifted_geometric_mean:10"]
+    values = [f(x) for f in funcs]
+    assert values[0] == pytest.approx(3.0)
+    assert values[1] == pytest.approx(3.0)
+    assert values[2] == pytest.approx(np.std(x))
+    assert values[3] == pytest.approx(Stats.shifted_geometric_mean(x, shift=10.0))
+
+
+@pytest.mark.parametrize("stats", [["best"], ["best:1"]])
+def test_get_full_stats_and_funcs_unknown(stats):
+    with pytest.raises(ValueError, match="best not in available Stats"):
+        get_full_stats_and_funcs(stats)
 
 
 if __name__ == "__main__":

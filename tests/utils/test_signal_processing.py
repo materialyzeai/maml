@@ -4,6 +4,7 @@ import os
 import unittest
 
 import numpy as np
+import pytest
 
 from maml.utils import fft_magnitude, get_sp_method, spectrogram, wvd
 
@@ -43,6 +44,12 @@ class TestSP(unittest.TestCase):
         wvd_res, f1, f2 = wvd(TestSP.x, return_all=True)
         assert wvd_res.shape == (100, 100)
         assert f1.shape == (100,)
+
+
+@unittest.skipIf(tftb is not None, "tests the error path when tftb is missing")
+def test_wvd_requires_tftb():
+    with pytest.raises(RuntimeError, match="tftb"):
+        wvd(np.ones(16))
 
 
 if __name__ == "__main__":
