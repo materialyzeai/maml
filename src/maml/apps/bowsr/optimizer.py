@@ -23,6 +23,9 @@ if TYPE_CHECKING:
     from maml.apps.bowsr.model import EnergyModel
 
 
+_GPR_FITTED_ATTRS = ("X_train_", "y_train_", "alpha_", "L_", "_y_train_mean", "_y_train_std", "_K_inv")
+
+
 def struct2perturbation(
     structure: Structure,
     use_symmetry: bool = True,
@@ -404,14 +407,15 @@ class BayesianOptimizer:
         def gpr_as_dict(gpr):
             """Serialize the GaussianProcessRegressor."""
             gpr_dict = gpr.get_params()
-            gpr_dict["X_train_"] = gpr.X_train_.tolist()
-            gpr_dict["alpha_"] = gpr.alpha_.tolist()
-            gpr_dict["_y_train_mean"] = gpr._y_train_mean.tolist()
-            gpr_dict["_K_inv"] = gpr._K_inv.tolist()
+            # Fitted attributes only exist after GaussianProcessRegressor.fit
+            # (and _K_inv only after an acquisition function has been evaluated).
+            for attr in _GPR_FITTED_ATTRS:
+                value = getattr(gpr, attr, None)
+                gpr_dict[attr] = None if value is None else np.asarray(value).tolist()
             gpr_kernel = gpr_dict["kernel"]
             kernel_name = gpr_kernel.__class__.__name__
             kernel_params = gpr_kernel.get_params()
-            kernel_opt_params = gpr.kernel_.get_params()
+            kernel_opt_params = gpr.kernel_.get_params() if hasattr(gpr, "kernel_") else None
 
             gpr_dict["kernel"] = {"name": kernel_name, "params": kernel_params, "opt_params": kernel_opt_params}
 
@@ -451,23 +455,22 @@ class BayesianOptimizer:
             import sklearn.gaussian_process.kernels as sk_kernels
 
             d = gpr_d.copy()
-            X_train_ = d.pop("X_train_")
-            alpha_ = d.pop("alpha_")
-            _y_train_mean = d.pop("_y_train_mean")
-            _K_inv = d.pop("_K_inv")
+            fitted = {attr: d.pop(attr, None) for attr in _GPR_FITTED_ATTRS}
             kernel_d = d["kernel"]
             kernel = getattr(sk_kernels, kernel_d["name"])(**kernel_d["params"])
-            kernel_ = getattr(sk_kernels, kernel_d["name"])(**kernel_d["opt_params"])
             d["kernel"] = kernel
 
             gpr = GaussianProcessRegressor()
-            gpr.kernel = kernel
-            gpr.kernel_ = kernel_
             gpr.set_params(**d)
-            gpr.X_train_ = X_train_
-            gpr.alpha_ = alpha_
-            gpr._y_train_mean = _y_train_mean
-            gpr._K_inv = _K_inv
+            if kernel_d.get("opt_params") is not None:
+                gpr.kernel_ = getattr(sk_kernels, kernel_d["name"])(**kernel_d["opt_params"])
+            for attr, value in fitted.items():
+                if value is not None:
+                    setattr(gpr, attr, np.array(value))
+            if fitted["_y_train_mean"] is not None and fitted["_y_train_std"] is None:
+                # Dicts written by older versions lack _y_train_std; it is
+                # identically one unless normalize_y=True.
+                gpr._y_train_std = np.ones_like(gpr._y_train_mean, dtype=float)
 
             return gpr
 
