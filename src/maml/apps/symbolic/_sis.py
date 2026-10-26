@@ -227,12 +227,16 @@ class ISIS:
         new_x = x[:, new_findex]
         while len(find_sel) < max_p:
             find_sel_new: list[int] = []
-            try:
-                find_sel_new = self.sis.run(new_x, new_y, options)
-            except ValueError:
-                while len(find_sel_new) == 0:
+            while len(find_sel_new) == 0:
+                try:
+                    find_sel_new = self.sis.run(new_x, new_y, options)
+                except ValueError:
+                    # screening kept no features (gamma * n < 1), so the selector had nothing to fit
+                    find_sel_new = []
+                if len(find_sel_new) == 0:
+                    if self.sis.gamma >= 1:
+                        raise RuntimeError("SIS selected no features even with all features screened in.")
                     self.sis.update_gamma(step)
-                    find_sel_new = self.sis.run(new_x, new_y)
             if self.l0_regulate:
                 find_sel, _, _ = _best_combination(x, y, find_sel, new_findex[find_sel_new], metric)
             else:
