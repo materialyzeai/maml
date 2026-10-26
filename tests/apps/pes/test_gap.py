@@ -105,6 +105,35 @@ class GAPotentialTest(unittest.TestCase):
         assert len(stress) == 6
 
 
+@pytest.mark.skipif(not (which("gap_fit") and which("quip")), reason="gap_fit/quip not found.")
+def test_notebook_example(in_tmp):
+    """The training call from notebooks/pes/gap (#677), followed by evaluate()."""
+    data = loadfn(Path(__file__).parents[3] / "notebooks" / "pes" / "gap" / "data.json")
+    structures = [d["structure"] for d in data]
+    energies = [d["outputs"]["energy"] for d in data]
+    forces = [d["outputs"]["forces"] for d in data]
+    gap = GAPotential()
+    rc = gap.train(
+        train_structures=structures,
+        train_energies=energies,
+        train_forces=forces,
+        sparse_method="cur_points",
+        l_max=8,
+        n_max=8,
+        e0=-0.97,
+        n_sparse=200,
+        cutoff=5.0,
+    )
+    assert rc == 0
+    assert gap.elements == ["Ni", "Mo"]
+    df_orig, df_predict = gap.evaluate(structures, energies, forces)
+    assert df_orig.shape == df_predict.shape
+    e_orig = df_orig[df_orig["dtype"] == "energy"]["y_orig"].to_numpy()
+    e_pred = df_predict[df_predict["dtype"] == "energy"]["y_orig"].to_numpy()
+    n_atoms = df_orig[df_orig["dtype"] == "energy"]["n"].to_numpy()
+    assert np.abs((e_pred - e_orig) / n_atoms).max() < 0.05
+
+
 # ---------------------------------------------------------------------------
 # Tests below run without QUIP/LAMMPS; gap_fit and quip are replaced by fakes.
 # ---------------------------------------------------------------------------
