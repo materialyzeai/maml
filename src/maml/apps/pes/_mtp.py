@@ -29,6 +29,67 @@ module_dir = os.path.dirname(__file__)
 MTini_params = loadfn(os.path.join(module_dir, "params", "MTini.json"))
 
 
+MLIP2_URL = "https://gitlab.com/ashapeev/mlip-2"
+SUPPORTED_VERSIONS_MSG = (
+    'maml\'s MTPotential only supports the MLIP-2 (version="mlip-2") and "mlip-dev" command-line '
+    f"interfaces; other versions such as MLIP-3 are not supported. MLIP-2 is available at {MLIP2_URL}."
+)
+
+
+def _output_tail(output: bytes | str | None, n_lines: int = 20) -> str:
+    """Return the last ``n_lines`` non-empty lines of a process output stream."""
+    if isinstance(output, bytes):
+        output = output.decode("utf-8", errors="replace")
+    lines = [line.rstrip() for line in (output or "").splitlines() if line.strip()]
+    return "\n".join(lines[-n_lines:])
+
+
+def _format_mlp_output(stdout: bytes | str | None, stderr: bytes | str | None, n_lines: int = 20) -> str:
+    """Format the tails of ``mlp``'s stdout and stderr for an error message."""
+    parts = []
+    for name, stream in (("stdout", stdout), ("stderr", stderr)):
+        tail = _output_tail(stream, n_lines)
+        if tail:
+            parts.append(f"--- mlp {name} (last {n_lines} lines) ---\n{tail}")
+    return "\n".join(parts) if parts else "(mlp produced no output)"
+
+
+def min_interatomic_distance(structures) -> float:
+    """
+    Minimum interatomic distance over a set of periodic structures.
+
+    This is the quantity reported by ``mlp mindist`` and used as the ``min_dist`` of the MTP
+    radial basis: the minimum over all pairs of atoms, including pairs between an atom and
+    periodic images of itself or of other atoms.
+
+    Args:
+        structures ([Structure]): Pymatgen Structure objects.
+
+    Returns:
+        float: The minimum interatomic distance in Angstrom.
+
+    Raises:
+        ValueError: If no structures are given.
+    """
+    if not structures:
+        raise ValueError("At least one structure is needed to compute the minimum interatomic distance.")
+    min_dist = np.inf
+    for structure in structures:
+        # Every atom has periodic images of itself at the lattice vector lengths, so a cutoff just
+        # above min(a, b, c) always finds a neighbour. Start smaller and grow the cutoff to keep
+        # the neighbour list cheap for large cells.
+        guaranteed = min(structure.lattice.abc) + 1e-3
+        cutoff = min(3.0, guaranteed)
+        while True:
+            distances = structure.get_neighbor_list(cutoff)[3]
+            if len(distances) > 0 or cutoff >= guaranteed:
+                break
+            cutoff = min(2 * cutoff, guaranteed)
+        if len(distances) > 0:
+            min_dist = min(min_dist, float(np.min(distances)))
+    return float(min_dist)
+
+
 def feed(attribute, kwargs, dictionary, tab="\t"):
     r"""
     Args:
@@ -630,12 +691,9 @@ class MTPotential(LammpsPotential):
             MTP_file_path = os.path.join(module_dir, "params", unfitted_mtp)
             shutil.copyfile(MTP_file_path, os.path.join(os.getcwd(), unfitted_mtp))
 
-            with open("min_dist", "w") as f, subprocess.Popen(["mlp", "mindist", atoms_filename], stdout=f) as p:
-                p.communicate()[0]
-
-            with open("min_dist") as f:
-                lines = f.readlines()
-            min_dist = float(lines[-1].split(":")[1])
+            # Computed in Python rather than with `mlp mindist`, which does not exist in every MLIP
+            # version (e.g. MLIP-3) and whose output format is not stable across versions.
+            min_dist = min_interatomic_distance(train_structures)
 
             with open(unfitted_mtp) as f:
                 template = f.read()
@@ -664,10 +722,15 @@ class MTPotential(LammpsPotential):
                     f"--weighting={weighting}",
                 ],
                 stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
             ) as p:
-                stdout = p.communicate()[0]
+                stdout, stderr = p.communicate()
                 rc = p.returncode
-            _check_returncode("MLP", rc, stdout)
+            if rc != 0:
+                raise RuntimeError(
+                    f"mlp train exited with return code {rc}. {SUPPORTED_VERSIONS_MSG}\n"
+                    + _format_mlp_output(stdout, stderr)
+                )
 
             def load_config(filename):
                 param = OrderedDict()

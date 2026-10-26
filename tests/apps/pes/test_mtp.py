@@ -12,10 +12,10 @@ from shutil import which
 import numpy as np
 import pytest
 from monty.serialization import loadfn
-from pymatgen.core import Structure
+from pymatgen.core import Lattice, Structure
 
 from maml.apps.pes import MTPotential, _mtp
-from maml.apps.pes._mtp import MTini_params, feed
+from maml.apps.pes._mtp import MTini_params, feed, min_interatomic_distance
 
 CWD = os.getcwd()
 test_datapool = loadfn(os.path.join(os.path.abspath(os.path.dirname(__file__)), "datapool.json"))
@@ -289,14 +289,15 @@ def test_train(fake_mlp_bin, train_data):
     mtp = MTPotential()
     assert mtp.train(*train_data, max_dist=4.5, radial_basis_size=6, max_iter=7, stress_weight=0) == 0
     assert mtp.elements == ["Mo"]
-    assert calls[0] == ["mlp", "mindist", "train.cfgs"]
-    train_cmd = calls[1]
+    # The minimum distance is computed in Python; `mlp mindist` is no longer called.
+    assert [call[1] for call in calls] == ["train"]
+    train_cmd = calls[0]
     assert train_cmd[:4] == ["mlp", "train", "08g.mtp", "train.cfgs"]
     for arg in ["--max-iter=7", "--trained-pot-name=08g_fitted.mtp", "--stress-weight=0", "--weighting=vibration"]:
         assert arg in train_cmd
     unfitted = calls.file("08g.mtp")
     assert "species_count = 1" in unfitted
-    assert "min_dist = 2.250000" in unfitted
+    assert f"min_dist = {min_interatomic_distance(train_data[0]):f}" in unfitted
     assert "max_dist = 4.500000" in unfitted
     assert "radial_basis_size = 6" in unfitted
     assert calls.file("train.cfgs").count("BEGIN_CFG") == len(train_data[0])
@@ -316,8 +317,80 @@ def test_train_failure(fake_mlp_bin, train_data):
         return fake_mlp(args)
 
     fake_mlp_bin(handler)
-    with pytest.raises(RuntimeError, match="MLP exited with return code 2: ERROR: Too few configurations"):
+    with pytest.raises(RuntimeError, match="mlp train exited with return code 2") as excinfo:
         MTPotential().train(*train_data)
+    msg = str(excinfo.value)
+    assert "ERROR: Too few configurations" in msg
+    assert 'version="mlip-2"' in msg
+    assert "mlip-dev" in msg
+    assert "gitlab.com/ashapeev/mlip-2" in msg
+
+
+def test_train_failure_reports_stderr(fake_mlp_bin, train_data):
+    # E.g. an MLIP version whose `mlp train` does not accept maml's flags.
+    def handler(args):
+        if args[1] == "train":
+            return 1, "", "Unknown option --bfgs-conv-tol\n"
+        return fake_mlp(args)
+
+    fake_mlp_bin(handler)
+    with pytest.raises(RuntimeError, match="mlp train exited with return code 1") as excinfo:
+        MTPotential().train(*train_data)
+    assert "mlp stderr" in str(excinfo.value)
+    assert "Unknown option --bfgs-conv-tol" in str(excinfo.value)
+
+
+def test_train_without_mlp_mindist(fake_mlp_bin, train_data):
+    # Regression for #601: an `mlp` without a `mindist` command (e.g. MLIP-3) printed an error
+    # message whose text maml then tried to parse as a float.
+    def handler(args):
+        if args[1] == "mindist":
+            return 0, "Error: command mindist does not exist.\n", ""
+        return fake_mlp(args)
+
+    calls = fake_mlp_bin(handler)
+    mtp = MTPotential()
+    assert mtp.train(*train_data) == 0
+    assert all(call[1] != "mindist" for call in calls)
+    assert f"min_dist = {min_interatomic_distance(train_data[0]):f}" in calls.file("08g.mtp")
+
+
+@pytest.mark.parametrize(
+    ("structures", "expected"),
+    [
+        # Simple cubic, one atom: only distances to its own periodic images, = a.
+        ([Structure(Lattice.cubic(2.5), ["Mo"], [[0, 0, 0]])], 2.5),
+        # Conventional bcc: body-centre to corner, = sqrt(3) / 2 * a.
+        ([Structure(Lattice.cubic(3.16), ["Mo", "Mo"], [[0, 0, 0], [0.5, 0.5, 0.5]])], np.sqrt(3) / 2 * 3.16),
+        # Primitive (non-orthogonal) bcc, one atom: nearest self-image at sqrt(3) / 2 * a.
+        (
+            [
+                Structure(
+                    Lattice(np.array([[-1, 1, 1], [1, -1, 1], [1, 1, -1]]) * 3.16 / 2),
+                    ["Mo"],
+                    [[0, 0, 0]],
+                )
+            ],
+            np.sqrt(3) / 2 * 3.16,
+        ),
+        # Pair across the periodic boundary along x: 0.1 * 10 = 1 A apart through the image, the
+        # in-cell separation (9 A) is larger. Minimum over several structures is returned.
+        (
+            [
+                Structure(Lattice.cubic(10), ["Ni", "Mo"], [[0.05, 0, 0], [0.95, 0, 0]]),
+                Structure(Lattice.cubic(3), ["Ni"], [[0, 0, 0]]),
+            ],
+            1.0,
+        ),
+    ],
+)
+def test_min_interatomic_distance(structures, expected):
+    assert min_interatomic_distance(structures) == pytest.approx(expected, abs=1e-8)
+
+
+def test_min_interatomic_distance_empty():
+    with pytest.raises(ValueError, match="At least one structure"):
+        min_interatomic_distance([])
 
 
 @pytest.mark.parametrize(("version", "shift"), [("mlip-2", 1.0), ("mlip-dev", 2.0)])
