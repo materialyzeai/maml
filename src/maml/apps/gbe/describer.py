@@ -205,7 +205,9 @@ def get_structural_feature(db_entry: dict, features: list | None = None) -> pd.D
     rotation_axis = db_entry["rotation_axis"]
     if gb_plane.shape[0] == 4:
         gb_plane = convert_hcp_plane(list(gb_plane))
-        rotation_axis = convert_hcp_direction(rotation_axis, lat_type=sg.get_crystal_system())
+        # Miller-Bravais indices refer to the hexagonal setting, which trigonal crystals also use in bulk_conv.
+        lat_type = "hexagonal" if bulk_conv.lattice.is_hexagonal() else sg.get_lattice_type()
+        rotation_axis = convert_hcp_direction(rotation_axis, lat_type=lat_type)
     d_gb = bulk_conv.lattice.d_hkl(gb_plane)  # type: ignore[arg-type]
     d_rot = bulk_conv.lattice.d_hkl(rotation_axis)
     theta = db_entry["rotation_angle"]

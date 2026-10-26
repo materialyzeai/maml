@@ -916,13 +916,8 @@ def test_structural_feature_hcp_four_index(pr_gb_entry):
     assert df[cos_theta.str_name][0] == pytest.approx(np.cos(np.radians(pr_gb_entry["rotation_angle"])))
 
 
-@pytest.mark.xfail(
-    reason="get_structural_feature passes sg.get_crystal_system() to convert_hcp_direction; 'trigonal' matches "
-    "neither the 'h' nor 'r' branch, so a 4-index rotation axis is never converted and d_hkl fails.",
-    strict=True,
-    raises=ValueError,
-)
 def test_structural_feature_trigonal_four_index():
+    # Regression: 'trigonal' crystal system skipped the 4-index -> 3-index axis conversion.
     bulk = Structure.from_spacegroup("P-3m1", Lattice.hexagonal(4, 7), ["Cd", "I"], [[0, 0, 0], [1 / 3, 2 / 3, 0.25]])
     entry = {"bulk_conv": bulk, "gb_plane": [1, 0, -1, 0], "rotation_axis": [0, 0, 0, 1], "rotation_angle": 30}
     df = get_structural_feature(entry, features=[d_gb, d_rot])
