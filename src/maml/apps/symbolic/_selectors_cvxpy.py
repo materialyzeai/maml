@@ -27,14 +27,17 @@ class BaseSelectorCP(BaseSelector):
     """Base selector using cvxpy (CP)."""
 
     @requires(cp is not None, "cvxpy is not present.")
-    def __init__(self, coef_thres: float = 1e-6, method: str = "ECOS"):
+    def __init__(self, coef_thres: float = 1e-6, method: str | None = None):
         """
         Base selector
         Args:
             coef_thres (float): threshold to discard certain coefficients
-            method (str): solver for cvxpy problem. The default is ECOS.
+            method (str | None): solver for cvxpy problem, e.g. "CLARABEL" or "SCS".
+                The default (None) lets cvxpy pick an installed solver. ECOS is no
+                longer bundled with cvxpy >= 1.6, so it must be installed separately
+                to be requested.
         """
-        super().__init__(coef_thres=coef_thres, method=method)
+        super().__init__(coef_thres=coef_thres, method=method)  # type: ignore[arg-type]
 
     # pylint: disable=E1128
     def select(self, x: np.ndarray, y: np.ndarray, options: dict | None = None) -> np.ndarray | None:
