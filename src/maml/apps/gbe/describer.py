@@ -363,7 +363,7 @@ class GBBond(MSONable):
             1. bm[i][j] = bond length between atom i&j
             if i & j is bonded (determined by the loc_algo)
             2. bm[i][j] = bm[j][i]
-            3. If not bonded, the bm[i][j] = np.nan
+            3. If not bonded, the bm[i][j] = 0
 
         """
         if isinstance(gb, dict):
@@ -401,8 +401,10 @@ class GBBond(MSONable):
         """
         if self.bond_mat is None:
             self.bond_mat = self._get_bond_mat(gb)
-        long_bond = (self.bond_mat > b0).sum()
-        short_bond = (self.bond_mat < b0).sum()
+        # Unbonded pairs are stored as 0 in bond_mat; only count actual bonds.
+        bonds = self.bond_mat[self.bond_mat > 0]
+        long_bond = (bonds > b0).sum()
+        short_bond = (bonds < b0).sum()
         ratio = short_bond / long_bond if long_bond else 0
         if return_count:
             return ratio, short_bond, long_bond

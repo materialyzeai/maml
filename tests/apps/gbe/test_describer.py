@@ -801,3 +801,20 @@ def test_breakbond_ratio_with_ndarray_bond_mat(w_gb_entry, w_gbond):
     assert n_long > 0
     assert ratio == pytest.approx(n_short / n_long)
     assert w_gbond.get_breakbond_ratio(w_gb_entry["initial_structure"], b0=2.76) == pytest.approx(ratio)
+
+
+def test_breakbond_ratio_ignores_unbonded_pairs(w_gb_entry, w_gbond):
+    # Regression: zero (unbonded) entries of bond_mat were counted as short bonds.
+    b0 = load_b0_dict()["W"]
+    ratio, n_short, n_long = w_gbond.get_breakbond_ratio(w_gb_entry["initial_structure"], b0=b0, return_count=True)
+    n_bonds = int((w_gbond.bond_mat > 0).sum())
+    assert (n_short, n_long) == (4, 92)
+    assert n_short + n_long == n_bonds
+    assert ratio == pytest.approx(4 / 92)
+
+
+def test_breakbond_ratio_no_long_bonds(w_gb_entry, w_gbond):
+    ratio, n_short, n_long = w_gbond.get_breakbond_ratio(w_gb_entry["initial_structure"], b0=100.0, return_count=True)
+    assert ratio == 0
+    assert n_long == 0
+    assert n_short == int((w_gbond.bond_mat > 0).sum())
