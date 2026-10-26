@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import pickle
+
 import numpy as np
 import pandas as pd
 import pytest
@@ -164,3 +166,54 @@ def test_restore_set2set_weights_noop_without_local_files():
     _matgl._restore_set2set_weights(model, "not-a-cached-model")
     for key, value in model.state_dict().items():
         torch.testing.assert_close(value, before[key])
+
+
+@pytest.fixture
+def frames(nacl) -> list[Structure]:
+    """Distinct perturbed NaCl cells, so a reordering of the results would be detected."""
+    out = []
+    for i in range(6):
+        s = nacl.copy()
+        s.perturb(0.02 + 0.01 * i)
+        out.append(s)
+    return out
+
+
+@pytest.fixture
+def clear_model_cache():
+    _matgl._cached_matgl_model.cache_clear()
+    yield
+    _matgl._cached_matgl_model.cache_clear()
+
+
+DESCRIBERS = [(MatGLStructure, {}), (MatGLSite, {"feature_batch": "pandas_concat"})]
+
+
+@pytest.mark.parametrize(("cls", "kwargs"), DESCRIBERS)
+def test_pickle_drops_and_reloads_model(default_model, clear_model_cache, nacl, cls, kwargs):
+    describer = cls(**kwargs)
+    # The stdlib pickler, as used by joblib's Memory hashing; it rejects the model's lambdified basis functions.
+    restored = pickle.loads(pickle.dumps(describer))
+    assert restored.describer_model is not describer.describer_model
+    assert restored.get_params() == describer.get_params()
+    np.testing.assert_array_equal(np.asarray(restored.transform_one(nacl)), np.asarray(describer.transform_one(nacl)))
+    # A second unpickle in the same process reuses the loaded model.
+    assert pickle.loads(pickle.dumps(describer)).describer_model is restored.describer_model
+
+
+@pytest.mark.parametrize(("cls", "kwargs"), DESCRIBERS)
+def test_parallel_transform_matches_serial(default_model, frames, cls, kwargs):
+    """Regression test for #637: n_jobs > 1 runs in joblib worker processes and must reproduce serial results."""
+    describer = cls(**kwargs)
+    serial = np.asarray(describer.transform(frames))
+    describer.n_jobs = 2
+    np.testing.assert_array_equal(np.asarray(describer.transform(frames)), serial)
+
+
+@pytest.mark.parametrize("n_jobs", [0, 2])
+def test_memory_cache(default_model, frames, tmp_path, n_jobs):
+    describer = MatGLStructure(memory=str(tmp_path), n_jobs=n_jobs)
+    first = np.asarray(describer.transform(frames))
+    assert len(list(tmp_path.rglob("output.pkl"))) == len(frames)
+    np.testing.assert_array_equal(np.asarray(describer.transform(frames)), first)
+    np.testing.assert_array_equal(first, np.asarray(MatGLStructure().transform(frames)))
