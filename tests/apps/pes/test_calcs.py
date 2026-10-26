@@ -185,8 +185,9 @@ class ElasticConstantTest(unittest.TestCase):
 
     @unittest.skipIf(not which("lmp_serial"), "No LAMMPS cmd found.")
     def test_calculate(self):
-        calculator = ElasticConstant(ff_settings=self.ff_settings, lattice="fcc", alat=3.506)
-        C11, C12, C44, bulkmodulus = calculator.calculate()
+        calculator = ElasticConstant(ff_settings=self.ff_settings)
+        struct = Structure.from_spacegroup("Fm-3m", Lattice.cubic(3.506), ["Ni"], [[0, 0, 0]])
+        C11, C12, C44, bulkmodulus = calculator.calculate([struct])[0]
         assert abs(C11 - 276) / 276 < 0.1
         assert abs(C12 - 159) / 159 < 0.1
         assert abs(C44 - 132) / 132 < 0.1
