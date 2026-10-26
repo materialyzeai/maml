@@ -399,8 +399,8 @@ class GBBond(MSONable):
             shorter_bond: # of short bonds
             longer_bond: # of long bonds
         """
-        if not self.bond_mat:
-            self._get_bond_mat(gb)
+        if self.bond_mat is None:
+            self.bond_mat = self._get_bond_mat(gb)
         long_bond = (self.bond_mat > b0).sum()
         short_bond = (self.bond_mat < b0).sum()
         ratio = short_bond / long_bond if long_bond else 0

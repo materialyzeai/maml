@@ -127,7 +127,7 @@ class TestDescriber(PymatgenTest):
 class TestGBBond(PymatgenTest):
     def setUp(self) -> None:
         self.bulk = Structure.from_file(pjoin(REFS, "mp-91.cif"))
-        self.gb_entry = [d for d in load_data() if d["task_id"] == 5094][0]
+        self.gb_entry = next(d for d in load_data() if d["task_id"] == 5094)
         self.gb = self.gb_entry["initial_structure"]
         self.gbond = GBBond(self.gb, loc_algo="crystalnn")
 
@@ -783,3 +783,21 @@ class TestGBBond(PymatgenTest):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+@pytest.fixture(scope="module")
+def w_gb_entry():
+    return next(d for d in load_data() if d["task_id"] == 5094)
+
+
+@pytest.fixture(scope="module")
+def w_gbond(w_gb_entry):
+    return GBBond(w_gb_entry["initial_structure"], loc_algo="crystalnn")
+
+
+def test_breakbond_ratio_with_ndarray_bond_mat(w_gb_entry, w_gbond):
+    # Regression: `if not self.bond_mat` raised "truth value of an array is ambiguous".
+    ratio, n_short, n_long = w_gbond.get_breakbond_ratio(w_gb_entry["initial_structure"], b0=2.76, return_count=True)
+    assert n_long > 0
+    assert ratio == pytest.approx(n_short / n_long)
+    assert w_gbond.get_breakbond_ratio(w_gb_entry["initial_structure"], b0=2.76) == pytest.approx(ratio)
