@@ -37,8 +37,9 @@ def wrap_matminer_describer(
         n_jobs = kwargs.pop("n_jobs", 0)
         memory = kwargs.pop("memory", None)
         verbose = kwargs.pop("verbose", False)
-        feature_batch = kwargs.pop("feature_concat", "pandas_concat")
-        wrapped_class(*args, **kwargs)
+        feature_batch = kwargs.pop("feature_batch", kwargs.pop("feature_concat", "pandas_concat"))
+        # Initialize a wrapped instance and adopt its attributes, so featurize() sees the user's parameters.
+        self.__dict__.update(wrapped_class(*args, **kwargs).__dict__)
         logger.info("Using matminer_wrapper %s class", wrapped_class.__name__)
         base_kwargs = {"n_jobs": n_jobs, "memory": memory, "verbose": verbose, "feature_batch": feature_batch}
         BaseDescriber.__init__(self, **base_kwargs)
