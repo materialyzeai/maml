@@ -1,8 +1,8 @@
 from __future__ import annotations
 
-from maml.sampling.stratified_sampling import SelectKFromClusters
-
 import pytest
+
+from maml.sampling.stratified_sampling import SelectKFromClusters
 
 
 class TestSelectKFromClusters:
@@ -53,3 +53,20 @@ class TestSelectKFromClusters:
             1,
             7,
         ]
+
+
+@pytest.mark.parametrize("missing", ["labels", "PCAfeatures"])
+def test_missing_clustering_keys(Birch_results, missing):
+    data = {k: v for k, v in Birch_results.items() if k != missing}
+    with pytest.raises(Exception, match="should at least provide label and feature information"):
+        SelectKFromClusters().transform(data)
+
+
+def test_center_without_label_centers_falls_back_to_random(Birch_results):
+    data = {k: v for k, v in Birch_results.items() if k != "label_centers"}
+    with pytest.warns(UserWarning, match="Centroid location is not provided"):
+        result = SelectKFromClusters(k=1).transform(data)
+    labels = data["labels"]
+    selected = result["selected_indexes"]
+    # one structure from each cluster
+    assert sorted(labels[i] for i in selected) == sorted(set(labels))
