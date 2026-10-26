@@ -22,6 +22,7 @@ from pymatgen.core import Lattice, Structure
 
 from maml.utils import check_structures_forces_stresses, convert_docs, pool_from
 
+from ._base import _check_returncode
 from ._lammps import LammpsPotential
 
 module_dir = os.path.dirname(__file__)
@@ -39,7 +40,8 @@ def feed(attribute, kwargs, dictionary, tab="\t"):
     Return:
         (str).
     """
-    tmp = kwargs.get(attribute) if kwargs.get(attribute) else dictionary.get(attribute).get("value")
+    # Explicit falsy values such as 0 or 0.0 must not be replaced by the default.
+    tmp = kwargs[attribute] if kwargs.get(attribute) is not None else dictionary.get(attribute).get("value")
     return (
         tab + dictionary.get(attribute).get("name"),
         str(tmp),
@@ -337,9 +339,9 @@ class MTPotential(LammpsPotential):
             format_str = "{:<48s}{:<20s}"
             lines.append(format_str.format("mtp-filename", mtp_filename))
             if kwargs.get("write_cfgs"):
-                lines.append(format_str.format("write-cfgs", kwargs.get("write_cfgs")))
+                lines.append(format_str.format("write-cfgs", str(kwargs.get("write_cfgs"))))
             if kwargs.get("write_cfgs_skip"):
-                lines.append(format_str.format("write-cfgs:skip", kwargs.get("write_cfgs_skip")))
+                lines.append(format_str.format("write-cfgs:skip", str(kwargs.get("write_cfgs_skip"))))
             if not kwargs.get("select"):
                 lines.append(format_str.format("select", "FALSE"))
             else:
@@ -361,7 +363,7 @@ class MTPotential(LammpsPotential):
                     ]
                 ):
                     if kwargs.get(option):
-                        lines.append(format_str.format("\t" + select_identifiers[i], kwargs.get(option)))
+                        lines.append(format_str.format("\t" + select_identifiers[i], str(kwargs.get(option))))
 
         elif self.version == "mlip-dev":
             format_str = "{:<48s}{:<20s}{}"
@@ -608,11 +610,7 @@ class MTPotential(LammpsPotential):
                 Choose from "vibrations", "molecules" and "structures".
         """
         if not which("mlp"):
-            raise RuntimeError(
-                "mlp has not been found.\n",
-                "Please refer to https://mlip.skoltech.ru",
-                "for further detail.",
-            )
+            raise RuntimeError("mlp has not been found.\nPlease refer to https://mlip.skoltech.ru for further detail.")
         (
             train_structures,
             train_forces,
@@ -669,15 +667,7 @@ class MTPotential(LammpsPotential):
             ) as p:
                 stdout = p.communicate()[0]
                 rc = p.returncode
-            if rc != 0:
-                error_msg = f"MLP exited with return code {rc}"
-                msg = stdout.decode("utf-8").split("\n")[:-1]
-                try:
-                    error_line = next(i for i, m in enumerate(msg) if m.startswith("ERROR"))
-                    error_msg += ", ".join(msg[error_line:])
-                except Exception:
-                    error_msg += msg[-1]
-                raise RuntimeError(error_msg)
+            _check_returncode("MLP", rc, stdout)
 
             def load_config(filename):
                 param = OrderedDict()
@@ -713,7 +703,7 @@ class MTPotential(LammpsPotential):
         ]
         with open(fitted_mtp, "w") as f:
             f.write("\n".join(lines))
-        ini_file = self.write_ini(load_from=fitted_mtp, Calculate_EFS=True, **kwargs)
+        ini_file = self.write_ini(mtp_filename=fitted_mtp, load_from=fitted_mtp, Calculate_EFS=True, **kwargs)
         return [self.pair_style.format(ini_file), self.pair_coeff]
 
     def evaluate(self, test_structures, test_energies, test_forces, test_stresses=None, **kwargs):
@@ -733,11 +723,7 @@ class MTPotential(LammpsPotential):
             kwargs: Parameters of write_param method.
         """
         if not which("mlp"):
-            raise RuntimeError(
-                "mlp has not been found.\n",
-                "Please refer to https://mlip.skoltech.ru ",
-                "for further detail.",
-            )
+            raise RuntimeError("mlp has not been found.\nPlease refer to https://mlip.skoltech.ru for further detail.")
         fitted_mtp = "fitted.mtp"
         original_file = "original.cfgs"
         predict_file = "predict.cfgs"
@@ -765,15 +751,7 @@ class MTPotential(LammpsPotential):
             with subprocess.Popen(cmd, stdout=subprocess.PIPE) as p:
                 stdout = p.communicate()[0]
                 rc = p.returncode
-            if rc != 0:
-                error_msg = f"mlp exited with return code {rc}"
-                msg = stdout.decode("utf-8").split("\n")[:-1]
-                try:
-                    error_line = next(i for i, m in enumerate(msg) if m.startswith("ERROR"))
-                    error_msg += ", ".join(msg[error_line:])
-                except Exception:
-                    error_msg += msg[-1]
-                raise RuntimeError(error_msg)
+            _check_returncode("mlp", rc, stdout)
             if not os.path.exists(predict_file):
                 predict_file = f"{predict_file}_0"
             _, df_predict = self.read_cfgs(predict_file)
