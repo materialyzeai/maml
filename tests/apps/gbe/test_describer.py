@@ -1157,15 +1157,13 @@ def test_gbbond_openbabelnn_requires_openbabel(small_gb):
         pytest.skip("openbabel is installed; OpenBabelNN only supports Molecules")
 
 
-@pytest.mark.xfail(
-    reason="Upstream pymatgen-core: VoronoiNN.get_all_voronoi_polyhedra raises 'No Voronoi neighbors found' for "
-    "GB structures with frac coords of ~-1e-16 (get_nn_info on each site works).",
-    strict=True,
-    raises=ValueError,
-)
 def test_gbbond_voronoinn(small_gb):
+    # Regression: small_gb has frac coords of ~-1e-16, which made VoronoiNN raise "No Voronoi neighbors found".
+    assert (small_gb.frac_coords < 0).any()
     gbond = GBBond(small_gb, loc_algo="voronoinn")
-    assert (gbond.bond_mat > 0).any()
+    i, j = np.nonzero(gbond.bond_mat)
+    assert len(i) > 0
+    assert gbond.bond_mat[i, j] == pytest.approx([small_gb.get_distance(a, b) for a, b in zip(i, j, strict=True)])
 
 
 def test_gbbond_from_dict_structure(small_gb):

@@ -368,12 +368,20 @@ class GBBond(MSONable):
         """
         if isinstance(gb, dict):
             gb = GrainBoundary.from_dict(gb)
+        # Find neighbors on a copy with frac coords wrapped into [0, 1); GBs often have coords of ~-1e-16,
+        # which break VoronoiNN. Bond lengths are still taken from the original gb.
+        wrapped = Structure(
+            gb.lattice,
+            gb.species_and_occu,
+            np.mod(np.round(gb.frac_coords, 10), 1.0),
+            site_properties=gb.site_properties,
+        )
         bond_mat = np.zeros((gb.num_sites, gb.num_sites))
-        all_nn_info = self.loc_algo.get_all_nn_info(gb)
+        all_nn_info = self.loc_algo.get_all_nn_info(wrapped)
         for i, _ in enumerate(gb.sites):
             # compute the all_nn_info first then call
             # the protected function is faster for multiple computation
-            nn = self.loc_algo._get_nn_shell_info(structure=gb, site_idx=i, shell=1, all_nn_info=all_nn_info)
+            nn = self.loc_algo._get_nn_shell_info(structure=wrapped, site_idx=i, shell=1, all_nn_info=all_nn_info)
             for b in nn:
                 bl = gb.get_distance(i, b["site_index"])
                 bond_mat[i][b["site_index"]] = bl
