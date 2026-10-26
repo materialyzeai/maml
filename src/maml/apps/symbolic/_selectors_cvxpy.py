@@ -5,6 +5,8 @@ using the cvxpy package.
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 import numpy as np
 from monty.dev import requires
 from scipy.linalg import lstsq
@@ -13,11 +15,12 @@ from maml.apps.symbolic._selectors import BaseSelector
 
 try:
     import cvxpy as cp
-
-    Expression = cp.expressions.expression.Expression
 except ImportError:
-    cp = None
-    Expression = "Expression"
+    cp = None  # type: ignore[assignment]
+
+if TYPE_CHECKING:
+    from cvxpy.constraints.constraint import Constraint
+    from cvxpy.expressions.expression import Expression
 
 
 class BaseSelectorCP(BaseSelector):
@@ -51,13 +54,13 @@ class BaseSelectorCP(BaseSelector):
         prob = cp.Problem(objective, constraints)
         prob.solve(solver=self.method, **options)
         self.coef_ = beta.value
-        self.indices = np.where(np.abs(beta.value) > self.coef_thres)[0]
+        self.indices = np.where(np.abs(beta.value) > self.coef_thres)[0]  # type: ignore[arg-type]
         self.coef_[np.where(np.abs(self.coef_) <= self.coef_thres)[0]] = 0.0  # type: ignore
         return self.indices
 
     def construct_constraints(
         self, x: np.ndarray, y: np.ndarray, beta: cp.Variable | None = None
-    ) -> list[Expression] | None:  # type: ignore
+    ) -> list[Constraint] | None:
         """
         Get constraints dictionary from data, e.g.,
         {"func": lambda beta: fun(x, y, beta), "type": "ineq"}.
@@ -114,7 +117,7 @@ class DantzigSelectorCP(BaseSelectorCP):
 
     def construct_constraints(
         self, x: np.ndarray, y: np.ndarray, beta: cp.Variable | None = None
-    ) -> list[Expression] | None:  # type: ignore
+    ) -> list[Constraint] | None:
         """
         Dantzig selector constraints
         Args:

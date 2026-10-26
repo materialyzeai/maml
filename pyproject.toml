@@ -69,6 +69,7 @@ dev = [
     "matgl>=4.1.1",
     "pre-commit>=4.2.0",
     "pymongo>=4.19.0",
+    "cvxpy>=1.9.3",
 ]
 lint = [
     "mypy>=1.15.0",

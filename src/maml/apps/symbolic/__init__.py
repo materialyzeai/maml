@@ -5,7 +5,7 @@ from __future__ import annotations
 try:
     import cvxpy as cp
 except ImportError:
-    cp = None
+    cp = None  # type: ignore[assignment]
 
 from ._feature_generator import FeatureGenerator, Operator
 from ._selectors import SCAD, L0BrutalForce
