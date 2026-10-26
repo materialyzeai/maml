@@ -22,11 +22,45 @@ from ruamel import yaml
 
 from maml.utils import check_structures_forces_stresses, convert_docs, pool_from
 
-from ._base import _check_returncode
 from ._lammps import LammpsPotential
 
 module_dir = os.path.dirname(__file__)
 soap_params = loadfn(os.path.join(module_dir, "params", "GAP.json"))
+
+
+def _run_quip_program(command: list[str]) -> tuple[int, str, str]:
+    """
+    Run a QUIP/GAP executable (gap_fit, quip) and extract why it failed.
+
+    QUIP programs report usage problems ("missing mandatory parameter ...") and
+    "ERROR" lines on stdout, but write the actual "SYSTEM ABORT: <reason>"
+    message to stderr, followed by "STOP 1".
+
+    Args:
+        command (list[str]): The command line to run.
+
+    Returns:
+        (returncode, stdout, reason): reason is an empty string if nothing
+        explains a failure.
+    """
+    with subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE) as p:
+        out, err = p.communicate()
+        returncode = p.returncode
+
+    def _lines(output):
+        return [line.strip() for line in (output or b"").decode("utf-8", errors="replace").splitlines() if line.strip()]
+
+    stdout = (out or b"").decode("utf-8", errors="replace")
+    out_lines = _lines(out)
+    err_lines = [line for line in _lines(err) if not re.fullmatch(r"STOP\s*\d*", line)]
+    reason = [line for line in out_lines if line.startswith("missing mandatory parameter")]
+    error_line = next((i for i, line in enumerate(out_lines) if line.startswith("ERROR")), None)
+    if error_line is not None:
+        reason += out_lines[error_line:]
+    reason += err_lines
+    if not reason and out_lines:
+        reason = out_lines[-1:]
+    return returncode, stdout, " ".join(reason)
 
 
 class GAPotential(LammpsPotential):
@@ -91,7 +125,9 @@ class GAPotential(LammpsPotential):
         if "Energy" in inputs:
             description.append("dft_energy=" + str(inputs["Energy"]))
         if "Stress" in inputs:
-            description.append("dft_virial=" + "\t".join([str(f) for f in inputs["Stress"]]))
+            # Extended XYZ needs array values quoted; an unquoted tab-separated list is read
+            # by QUIP as a single number, so gap_fit silently drops all virials.
+            description.append('dft_virial="' + " ".join([str(f) for f in inputs["Stress"]]) + '"')
         if "SuperCell" in inputs:
             super_cell_str = [str(f) for f in inputs["SuperCell"].matrix.ravel()]
             description.append(f'Lattice="{"     ".join(super_cell_str)}"')
@@ -153,8 +189,9 @@ class GAPotential(LammpsPotential):
         lattice_pattern = re.compile(r'Lattice="(.+)"')
         # energy_pattern = re.compile('dft_energy=(-?[0-9]+.[0-9]+)', re.I)
         energy_pattern = re.compile(r"(?<=\S{3}\s|dft_)energy=(-?[0-9]+.[0-9]+)")
-        # stress_pattern = re.compile('dft_virial={(.+)}')
-        stress_pattern = re.compile(r"dft_virial=({|)(.+?)(}|) \S.*")
+        # Quoted ("..."), braced ({...}) or, for files written by older maml versions,
+        # tab-separated values.
+        stress_pattern = re.compile(r'(?<!\w)dft_virial=(?:"([^"]*)"|\{([^}]*)\}|([^ \n]+))')
         properties_pattern = re.compile(r"properties=(\S+)", re.I)
         # position_pattern = re.compile('\n(.+)', re.S)
         position_pattern = re.compile("\n(.+?)(?=\nE.*|\n\n.*|$)", re.S)
@@ -167,7 +204,7 @@ class GAPotential(LammpsPotential):
             lattice = Lattice([float(s) for s in lattice_str.split()])
             energy_str = energy_pattern.findall(block)[-1]
             energy = float(energy_str)
-            stress_str = stress_pattern.findall(block)[0][1]
+            stress_str = next(s for s in stress_pattern.findall(block)[0] if s)
             virial_stress = np.array([float(s) for s in stress_str.split()])
             virial_stress = [virial_stress[i] for i in [0, 4, 8, 1, 5, 6]]
             properties = properties_pattern.findall(block)[0].split(":")
@@ -330,10 +367,13 @@ class GAPotential(LammpsPotential):
         with ScratchDir("."):
             self.write_cfgs(filename=atoms_filename, cfg_pool=train_pool)
 
-            with subprocess.Popen(exe_command, stdout=subprocess.PIPE) as p:
-                stdout = p.communicate()[0]
-                rc = p.returncode
-            _check_returncode("gap_fit", rc, stdout)
+            rc, _, reason = _run_quip_program(exe_command)
+            if rc != 0:
+                raise RuntimeError(f"gap_fit exited with return code {rc}" + (f": {reason}" if reason else ""))
+            # Do not rely on the exit status alone: in #677 gap_fit aborted ("SYSTEM ABORT ... STOP 1")
+            # yet maml went on to parse a potential file that was never written.
+            if not os.path.isfile(xml_filename):
+                raise RuntimeError(f"gap_fit did not write {xml_filename}" + (f": {reason}" if reason else ""))
 
             def get_xml(xml_file):
                 tree = ET.parse(xml_file)
@@ -441,8 +481,11 @@ class GAPotential(LammpsPotential):
             if predict_stress:
                 exe_command.append("virial=T")
 
-            with open(predict_file, "w") as f, subprocess.Popen(exe_command, stdout=f) as p:
-                _ = p.communicate()[0]
+            rc, stdout, reason = _run_quip_program(exe_command)
+            if rc != 0:
+                raise RuntimeError(f"quip exited with return code {rc}" + (f": {reason}" if reason else ""))
+            with open(predict_file, "w") as f:
+                f.write(stdout)
 
             _, df_predict = self.read_cfgs(predict_file, predict=True)
 

@@ -105,6 +105,35 @@ class GAPotentialTest(unittest.TestCase):
         assert len(stress) == 6
 
 
+@pytest.mark.skipif(not (which("gap_fit") and which("quip")), reason="gap_fit/quip not found.")
+def test_notebook_example(in_tmp):
+    """The training call from notebooks/pes/gap (#677), followed by evaluate()."""
+    data = loadfn(Path(__file__).parents[3] / "notebooks" / "pes" / "gap" / "data.json")
+    structures = [d["structure"] for d in data]
+    energies = [d["outputs"]["energy"] for d in data]
+    forces = [d["outputs"]["forces"] for d in data]
+    gap = GAPotential()
+    rc = gap.train(
+        train_structures=structures,
+        train_energies=energies,
+        train_forces=forces,
+        sparse_method="cur_points",
+        l_max=8,
+        n_max=8,
+        e0=-0.97,
+        n_sparse=200,
+        cutoff=5.0,
+    )
+    assert rc == 0
+    assert gap.elements == ["Ni", "Mo"]
+    df_orig, df_predict = gap.evaluate(structures, energies, forces)
+    assert df_orig.shape == df_predict.shape
+    e_orig = df_orig[df_orig["dtype"] == "energy"]["y_orig"].to_numpy()
+    e_pred = df_predict[df_predict["dtype"] == "energy"]["y_orig"].to_numpy()
+    n_atoms = df_orig[df_orig["dtype"] == "energy"]["n"].to_numpy()
+    assert np.abs((e_pred - e_orig) / n_atoms).max() < 0.05
+
+
 # ---------------------------------------------------------------------------
 # Tests below run without QUIP/LAMMPS; gap_fit and quip are replaced by fakes.
 # ---------------------------------------------------------------------------
@@ -177,11 +206,66 @@ def test_line_up(datapool):
     assert lines[0] == str(len(struct))
     assert len(lines) == len(struct) + 2
     assert "dft_energy=-10.5" in lines[1]
-    # Voigt [xx, yy, zz, xy, yz, xz] expanded to the full 3x3 matrix
-    assert "dft_virial=1\t4\t6\t4\t2\t5\t6\t5\t3" in lines[1]
+    # Voigt [xx, yy, zz, xy, yz, xz] expanded to the full 3x3 matrix. Regression: the values were
+    # written unquoted and tab-separated, which QUIP reads as a single number, so gap_fit found
+    # no virials at all ("Number of target virials ... found: 0") even with use_stress=True.
+    assert 'dft_virial="1 4 6 4 2 5 6 5 3"' in lines[1]
     assert lines[1].endswith("Properties=species:S:1:pos:R:3:Z:I:1:dft_force:R:3")
     assert lines[2].split()[0] == "Mo"
     assert lines[2].split()[4] == "42"
+
+
+# Two frames as printed by ``quip atoms_filename=... energy=T forces=T`` (QUIP 0.10.3), trimmed
+# to two atoms per frame: banner lines, "AT "-prefixed frames, extra map_shift/n_neighb columns
+# and quoted dft_virial arrays.
+QUIP_OUTPUT = """libAtoms::Hello World: 2026-10-26 14:06:58
+libAtoms::Hello World: QUIP_ARCH    darwin_aarch64_gfortran
+
+IPModel_GAP : label = GAP_2026_10_26_480_14_6_57_135
+Energy=-21.0
+Cell Volume: 31.0 A^3
+AT 2
+AT dft_energy=-21.5 dft_virial="1.0       4.0       6.0       4.0       2.0       5.0       6.0       5.0       3.0" \
+energy=-21.0 cutoff=5.0 nneightol=1.2 pbc="T T T" Lattice="3.16 0.0 0.0 0.0 3.16 0.0 0.0 0.0 3.16" \
+Properties=species:S:1:pos:R:3:Z:I:1:dft_force:R:3:map_shift:I:3:n_neighb:I:1:force:R:3
+AT Mo   0.0 0.0 0.0   42   0.1 0.2 0.3   0 0 0   14   0.11 0.21 0.31
+AT Mo   1.58 1.58 1.58   42   -0.1 -0.2 -0.3   0 0 0   14   -0.11 -0.21 -0.31
+Energy=-22.0
+Cell Volume: 31.0 A^3
+AT 2
+AT dft_energy=-22.5 dft_virial="0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0" energy=-22.0 cutoff=5.0 nneightol=1.2 \
+pbc="T T T" Lattice="3.2 0.0 0.0 0.0 3.2 0.0 0.0 0.0 3.2" \
+Properties=species:S:1:pos:R:3:Z:I:1:dft_force:R:3:map_shift:I:3:n_neighb:I:1:force:R:3
+AT Mo   0.0 0.0 0.0   42   0.0 0.0 0.0   0 0 0   14   0.01 0.02 0.03
+AT Mo   1.6 1.6 1.6   42   0.0 0.0 0.0   0 0 0   14   -0.01 -0.02 -0.03
+
+libAtoms::Finalise: Bye-Bye!
+"""
+
+
+def test_read_cfgs_quip_output(in_tmp):
+    # Regression: the unquoted virial was echoed by quip as "dft_virial=0.00000000 0.0", which made
+    # read_cfgs (and hence GAPotential.evaluate) fail with an IndexError.
+    Path("predict.xyz").write_text(QUIP_OUTPUT)
+    data_pool, df = GAPotential.read_cfgs("predict.xyz", predict=True)
+    assert len(data_pool) == 2
+    assert [d["outputs"]["energy"] for d in data_pool] == [-21.0, -22.0]
+    np.testing.assert_allclose(data_pool[0]["outputs"]["forces"], [[0.11, 0.21, 0.31], [-0.11, -0.21, -0.31]])
+    np.testing.assert_allclose(data_pool[0]["outputs"]["virial_stress"], [1, 2, 3, 4, 5, 6])
+    assert df.shape[0] == 2 * (1 + 3 * 2)
+
+
+def test_read_cfgs_legacy_virial(in_tmp, datapool):
+    # Files written by earlier maml versions used an unquoted, tab-separated dft_virial.
+    GAPotential().write_cfgs("new.xyz", cfg_pool=datapool[:2])
+    text = Path("new.xyz").read_text()
+    legacy = re.sub(r'dft_virial="([^"]*)"', lambda m: "dft_virial=" + m.group(1).replace(" ", "\t"), text)
+    assert 'dft_virial="' not in legacy
+    Path("legacy.xyz").write_text(legacy)
+    new_pool, legacy_pool = GAPotential.read_cfgs("new.xyz")[0], GAPotential.read_cfgs("legacy.xyz")[0]
+    for new, old, ref in zip(new_pool, legacy_pool, datapool[:2], strict=True):
+        np.testing.assert_allclose(old["outputs"]["virial_stress"], new["outputs"]["virial_stress"])
+        np.testing.assert_allclose(old["outputs"]["virial_stress"], ref["outputs"]["virial_stress"], rtol=1e-6)
 
 
 def test_write_cfgs_requires_xyz(in_tmp, datapool):
@@ -248,6 +332,56 @@ def test_train_failure(gap_binaries, train_data):
         GAPotential().train(*train_data)
 
 
+# What gap_fit (QUIP 0.10.3) prints when a mandatory argument is missing: the full usage text and
+# "missing mandatory parameter" lines on stdout, the abort reason on stderr.
+GAP_FIT_USAGE = """libAtoms::Hello World: QUIP_ARCH    darwin_aarch64_gfortran
+
+atoms_filename type=STRING scalar current_value=//MANDATORY//
+XYZ file with fitting configurations
+
+export_covariance type=LOGICAL scalar current_value=F
+If true, posterior covariance of the GAP model is saved.
+
+missing mandatory parameter default_kernel_regularisation
+missing mandatory parameter default_sigma
+"""
+GAP_FIT_ABORT = "SYSTEM ABORT: Exit: Mandatory argument(s) missing...   \nSTOP 1\n"
+
+
+def test_train_failure_reports_stderr(gap_binaries, train_data):
+    # Regression (#677): the SYSTEM ABORT reason goes to stderr, which was not captured, so the
+    # error only showed the last stdout line.
+    gap_binaries(handler=lambda args: (1, GAP_FIT_USAGE, GAP_FIT_ABORT))
+    with pytest.raises(RuntimeError) as excinfo:
+        GAPotential().train(*train_data)
+    assert str(excinfo.value) == (
+        "gap_fit exited with return code 1: missing mandatory parameter default_kernel_regularisation "
+        "missing mandatory parameter default_sigma SYSTEM ABORT: Exit: Mandatory argument(s) missing..."
+    )
+
+
+def test_train_failure_multiline_abort(gap_binaries, train_data):
+    stderr = (
+        "SYSTEM ABORT: Determination of e0 was requested to be based on isolated atom energies, "
+        "but not all  atom types\n"
+        "present in the XYZ had an isolated representative.     \nSTOP 1\n"
+    )
+    gap_binaries(handler=lambda args: (1, "libAtoms::Hello World\nNumber of descriptors: 540\n", stderr))
+    with pytest.raises(RuntimeError, match=r"code 1: SYSTEM ABORT: Determination of e0 .* isolated representative\.$"):
+        GAPotential().train(*train_data)
+
+
+def test_train_no_xml_written(gap_binaries, train_data):
+    # Regression (#677): gap_fit aborted without writing the potential, and train() then failed with
+    # FileNotFoundError: train.xml instead of reporting gap_fit's message.
+    calls = gap_binaries(handler=lambda args: (0, GAP_FIT_USAGE, GAP_FIT_ABORT))
+    with pytest.raises(RuntimeError) as excinfo:
+        GAPotential().train(*train_data)
+    assert str(excinfo.value).startswith("gap_fit did not write train.xml: missing mandatory parameter")
+    assert str(excinfo.value).endswith("SYSTEM ABORT: Exit: Mandatory argument(s) missing...")
+    assert len(calls) == 1
+
+
 def test_train_populates_param(trained_gap):
     assert trained_gap.elements == ["Mo"]
     assert trained_gap.param["potential_label"] == "GAP_2017_6_17_60_4_3_56_165"
@@ -297,6 +431,17 @@ def test_evaluate(trained_gap, gap_binaries, train_data):
     forces_orig = df_orig[df_orig["dtype"] == "force"]["y_orig"].to_numpy()
     forces_pred = df_predict[df_predict["dtype"] == "force"]["y_orig"].to_numpy()
     np.testing.assert_allclose(forces_pred, 0.5 * forces_orig, atol=1e-5)
+
+
+def test_evaluate_quip_failure(trained_gap, gap_binaries, train_data):
+    # Regression: quip's exit status was ignored, so a failure surfaced as an obscure parsing error
+    # of its (frame-less) output.
+    out = "libAtoms::Hello World: QUIP_ARCH    darwin_aarch64_gfortran\n\nCalls to system_timer will do nothing\n"
+    calls = gap_binaries(handler=lambda args: (1, out, "SYSTEM ABORT: predict.xml does not exist   \nSTOP 1\n"))
+    with pytest.raises(RuntimeError) as excinfo:
+        trained_gap.evaluate(*train_data)
+    assert str(excinfo.value) == "quip exited with return code 1: SYSTEM ABORT: predict.xml does not exist"
+    assert calls[0] == ["quip", "atoms_filename=original.xyz", "param_filename=predict.xml", "energy=T", "forces=T"]
 
 
 @pytest.mark.xfail(
