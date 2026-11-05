@@ -108,6 +108,7 @@ class GAPotentialTest(unittest.TestCase):
 @pytest.mark.skipif(not (which("gap_fit") and which("quip")), reason="gap_fit/quip not found.")
 def test_notebook_example(in_tmp):
     """The training call from notebooks/pes/gap (#677), followed by evaluate()."""
+    # Skipped in CI (no gap_fit/quip), so moving the notebook data only breaks this test locally.
     data = loadfn(Path(__file__).parents[3] / "notebooks" / "pes" / "gap" / "data.json")
     structures = [d["structure"] for d in data]
     energies = [d["outputs"]["energy"] for d in data]
@@ -215,9 +216,9 @@ def test_line_up(datapool):
     assert lines[2].split()[4] == "42"
 
 
-# Two frames as printed by ``quip atoms_filename=... energy=T forces=T`` (QUIP 0.10.3), trimmed
-# to two atoms per frame: banner lines, "AT "-prefixed frames, extra map_shift/n_neighb columns
-# and quoted dft_virial arrays.
+# Two frames as printed by ``quip atoms_filename=... energy=T forces=T virial=T`` (QUIP 0.10.3),
+# trimmed to two atoms per frame: banner lines, "AT "-prefixed frames, extra map_shift/n_neighb
+# columns, and quoted dft_virial (reference) and virial (predicted) arrays.
 QUIP_OUTPUT = """libAtoms::Hello World: 2026-10-26 14:06:58
 libAtoms::Hello World: QUIP_ARCH    darwin_aarch64_gfortran
 
@@ -226,14 +227,16 @@ Energy=-21.0
 Cell Volume: 31.0 A^3
 AT 2
 AT dft_energy=-21.5 dft_virial="1.0       4.0       6.0       4.0       2.0       5.0       6.0       5.0       3.0" \
-energy=-21.0 cutoff=5.0 nneightol=1.2 pbc="T T T" Lattice="3.16 0.0 0.0 0.0 3.16 0.0 0.0 0.0 3.16" \
+energy=-21.0 virial="10.0 40.0 60.0 40.0 20.0 50.0 60.0 50.0 30.0" \
+cutoff=5.0 nneightol=1.2 pbc="T T T" Lattice="3.16 0.0 0.0 0.0 3.16 0.0 0.0 0.0 3.16" \
 Properties=species:S:1:pos:R:3:Z:I:1:dft_force:R:3:map_shift:I:3:n_neighb:I:1:force:R:3
 AT Mo   0.0 0.0 0.0   42   0.1 0.2 0.3   0 0 0   14   0.11 0.21 0.31
 AT Mo   1.58 1.58 1.58   42   -0.1 -0.2 -0.3   0 0 0   14   -0.11 -0.21 -0.31
 Energy=-22.0
 Cell Volume: 31.0 A^3
 AT 2
-AT dft_energy=-22.5 dft_virial="0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0" energy=-22.0 cutoff=5.0 nneightol=1.2 \
+AT dft_energy=-22.5 dft_virial="0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0" energy=-22.0 \
+virial="0.1 0.0 0.0 0.0 0.1 0.0 0.0 0.0 0.1" cutoff=5.0 nneightol=1.2 \
 pbc="T T T" Lattice="3.2 0.0 0.0 0.0 3.2 0.0 0.0 0.0 3.2" \
 Properties=species:S:1:pos:R:3:Z:I:1:dft_force:R:3:map_shift:I:3:n_neighb:I:1:force:R:3
 AT Mo   0.0 0.0 0.0   42   0.0 0.0 0.0   0 0 0   14   0.01 0.02 0.03
@@ -251,8 +254,22 @@ def test_read_cfgs_quip_output(in_tmp):
     assert len(data_pool) == 2
     assert [d["outputs"]["energy"] for d in data_pool] == [-21.0, -22.0]
     np.testing.assert_allclose(data_pool[0]["outputs"]["forces"], [[0.11, 0.21, 0.31], [-0.11, -0.21, -0.31]])
-    np.testing.assert_allclose(data_pool[0]["outputs"]["virial_stress"], [1, 2, 3, 4, 5, 6])
+    # Predicted virials come from "virial=", not the reference "dft_virial=" echoed back by quip.
+    np.testing.assert_allclose(data_pool[0]["outputs"]["virial_stress"], [10, 20, 30, 40, 50, 60])
+    np.testing.assert_allclose(data_pool[1]["outputs"]["virial_stress"], [0.1, 0.1, 0.1, 0, 0, 0])
     assert df.shape[0] == 2 * (1 + 3 * 2)
+
+    reference, _ = GAPotential.read_cfgs("predict.xyz")
+    np.testing.assert_allclose(reference[0]["outputs"]["virial_stress"], [1, 2, 3, 4, 5, 6])
+    np.testing.assert_allclose(reference[0]["outputs"]["forces"], [[0.1, 0.2, 0.3], [-0.1, -0.2, -0.3]])
+
+
+def test_read_cfgs_quip_output_without_virial(in_tmp):
+    # quip run without virial=T writes no "virial=" field; dft_virial must not stand in for it.
+    Path("predict.xyz").write_text(re.sub(r' virial="[^"]*"', "", QUIP_OUTPUT))
+    data_pool, _ = GAPotential.read_cfgs("predict.xyz", predict=True)
+    assert [d["outputs"]["virial_stress"] for d in data_pool] == [None, None]
+    assert [d["outputs"]["energy"] for d in data_pool] == [-21.0, -22.0]
 
 
 def test_read_cfgs_legacy_virial(in_tmp, datapool):
@@ -369,6 +386,18 @@ def test_train_failure_multiline_abort(gap_binaries, train_data):
     gap_binaries(handler=lambda args: (1, "libAtoms::Hello World\nNumber of descriptors: 540\n", stderr))
     with pytest.raises(RuntimeError, match=r"code 1: SYSTEM ABORT: Determination of e0 .* isolated representative\.$"):
         GAPotential().train(*train_data)
+
+
+def test_train_failure_error_line(gap_binaries, train_data):
+    # stdout from the first ERROR line is reported, capped so trailing usage text is not included.
+    stdout = "libAtoms::Hello World\nERROR: bad descriptor\n" + "".join(f"usage line {i}\n" for i in range(20))
+    gap_binaries(handler=lambda args: (1, stdout, "SYSTEM ABORT: descriptor_initialise failed\nSTOP 1\n"))
+    with pytest.raises(RuntimeError) as excinfo:
+        GAPotential().train(*train_data)
+    assert str(excinfo.value) == (
+        "gap_fit exited with return code 1: ERROR: bad descriptor usage line 0 usage line 1 usage line 2 "
+        "usage line 3 SYSTEM ABORT: descriptor_initialise failed"
+    )
 
 
 def test_train_no_xml_written(gap_binaries, train_data):

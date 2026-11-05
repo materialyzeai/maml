@@ -27,6 +27,9 @@ from ._lammps import LammpsPotential
 module_dir = os.path.dirname(__file__)
 soap_params = loadfn(os.path.join(module_dir, "params", "GAP.json"))
 
+# Number of stdout lines, starting at the first "ERROR" line, kept in a QUIP error message.
+_MAX_ERROR_LINES = 5
+
 
 def _run_quip_program(command: list[str]) -> tuple[int, str, str]:
     """
@@ -47,7 +50,7 @@ def _run_quip_program(command: list[str]) -> tuple[int, str, str]:
         out, err = p.communicate()
         returncode = p.returncode
 
-    def _lines(output):
+    def _lines(output: bytes | None) -> list[str]:
         return [line.strip() for line in (output or b"").decode("utf-8", errors="replace").splitlines() if line.strip()]
 
     stdout = (out or b"").decode("utf-8", errors="replace")
@@ -56,7 +59,8 @@ def _run_quip_program(command: list[str]) -> tuple[int, str, str]:
     reason = [line for line in out_lines if line.startswith("missing mandatory parameter")]
     error_line = next((i for i, line in enumerate(out_lines) if line.startswith("ERROR")), None)
     if error_line is not None:
-        reason += out_lines[error_line:]
+        # Cap it: QUIP may print long usage text after the ERROR line.
+        reason += out_lines[error_line : error_line + _MAX_ERROR_LINES]
     reason += err_lines
     if not reason and out_lines:
         reason = out_lines[-1:]
@@ -176,7 +180,11 @@ class GAPotential(LammpsPotential):
 
         Args:
             filename (str): The configuration file to be read.
-            predict (bool): whether it is the prediction mode or not.
+            predict (bool): whether it is the prediction mode or not. In
+                prediction mode, forces and virial stresses are read from the
+                "force" and "virial" fields written by quip instead of
+                "dft_force" and "dft_virial". virial_stress is None if quip
+                was run without virial=T.
         """
         type_convert = {"R": np.float32, "I": np.int64, "S": np.str_}
         data_pool = []
@@ -190,8 +198,9 @@ class GAPotential(LammpsPotential):
         # energy_pattern = re.compile('dft_energy=(-?[0-9]+.[0-9]+)', re.I)
         energy_pattern = re.compile(r"(?<=\S{3}\s|dft_)energy=(-?[0-9]+.[0-9]+)")
         # Quoted ("..."), braced ({...}) or, for files written by older maml versions,
-        # tab-separated values.
-        stress_pattern = re.compile(r'(?<!\w)dft_virial=(?:"([^"]*)"|\{([^}]*)\}|([^ \n]+))')
+        # tab-separated values. (?<!\w) keeps "virial=" from matching "dft_virial=".
+        stress_key = "virial" if predict else "dft_virial"
+        stress_pattern = re.compile(rf'(?<!\w){stress_key}=(?:"([^"]*)"|\{{([^}}]*)\}}|([^ \n]+))')
         properties_pattern = re.compile(r"properties=(\S+)", re.I)
         # position_pattern = re.compile('\n(.+)', re.S)
         position_pattern = re.compile("\n(.+?)(?=\nE.*|\n\n.*|$)", re.S)
@@ -204,9 +213,13 @@ class GAPotential(LammpsPotential):
             lattice = Lattice([float(s) for s in lattice_str.split()])
             energy_str = energy_pattern.findall(block)[-1]
             energy = float(energy_str)
-            stress_str = next(s for s in stress_pattern.findall(block)[0] if s)
-            virial_stress = np.array([float(s) for s in stress_str.split()])
-            virial_stress = [virial_stress[i] for i in [0, 4, 8, 1, 5, 6]]
+            stress_matches = stress_pattern.findall(block)
+            if predict and not stress_matches:
+                virial_stress = None
+            else:
+                stress_str = next(s for s in stress_matches[0] if s)
+                full_virial = [float(s) for s in stress_str.split()]
+                virial_stress = [full_virial[i] for i in [0, 4, 8, 1, 5, 6]]
             properties = properties_pattern.findall(block)[0].split(":")
             labels_columns = OrderedDict()
             labels = defaultdict()
