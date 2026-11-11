@@ -108,7 +108,8 @@ class GAPotentialTest(unittest.TestCase):
 @pytest.mark.skipif(not (which("gap_fit") and which("quip")), reason="gap_fit/quip not found.")
 def test_notebook_example(in_tmp):
     """The training call from notebooks/pes/gap (#677), followed by evaluate()."""
-    # Skipped in CI (no gap_fit/quip), so moving the notebook data only breaks this test locally.
+    # Uses the notebook's own training data so the test tracks what users run. Needs real binaries,
+    # e.g. `uv run --with quippy-ase pytest tests/apps/pes/test_gap.py`.
     data = loadfn(Path(__file__).parents[3] / "notebooks" / "pes" / "gap" / "data.json")
     structures = [d["structure"] for d in data]
     energies = [d["outputs"]["energy"] for d in data]
@@ -163,7 +164,8 @@ def fake_gap_fit(args):
 
 
 def fake_quip(args):
-    """Return the input frames with predicted energy (dft + 1) and forces (0.5 * dft) appended."""
+    """Return the input frames with predicted energy (dft + 1), forces (0.5 * dft) and, with
+    virial=T, virials (2 * dft) appended."""
     atoms_file = next(a.split("=", 1)[1] for a in args if a.startswith("atoms_filename="))
     lines = Path(atoms_file).read_text().split("\n")
     out, i = [], 0
@@ -171,8 +173,12 @@ def fake_quip(args):
         n_atoms = int(lines[i])
         comment = lines[i + 1]
         energy = float(re.search(r"dft_energy=(\S+)", comment).group(1))
+        predicted = f" energy={energy + 1:.6f}"
+        if "virial=T" in args:
+            dft_virial = [float(v) for v in re.search(r'dft_virial="([^"]*)"', comment).group(1).split()]
+            predicted += ' virial="' + " ".join(f"{2 * v:.6f}" for v in dft_virial) + '"'
         out.append(lines[i])
-        out.append(comment.replace("dft_force:R:3", "dft_force:R:3:force:R:3") + f" energy={energy + 1:.6f}")
+        out.append(comment.replace("dft_force:R:3", "dft_force:R:3:force:R:3") + predicted)
         for line in lines[i + 2 : i + 2 + n_atoms]:
             dft_force = [float(f) for f in line.split()[-3:]]
             out.append("AT " + line + "".join(f"{0.5 * f:>16f}" for f in dft_force))
@@ -270,6 +276,32 @@ def test_read_cfgs_quip_output_without_virial(in_tmp):
     data_pool, _ = GAPotential.read_cfgs("predict.xyz", predict=True)
     assert [d["outputs"]["virial_stress"] for d in data_pool] == [None, None]
     assert [d["outputs"]["energy"] for d in data_pool] == [-21.0, -22.0]
+    with pytest.raises(ValueError, match=r"Frame 0 of predict\.xyz has no virial field; run quip with virial=T"):
+        GAPotential.read_cfgs("predict.xyz", predict=True, include_stress=True)
+
+
+@pytest.mark.parametrize("predict", [False, True])
+def test_read_cfgs_include_stress(in_tmp, predict):
+    Path("predict.xyz").write_text(QUIP_OUTPUT)
+    _, df = GAPotential.read_cfgs("predict.xyz", predict=predict, include_stress=True)
+    assert df.shape[0] == 2 * (1 + 3 * 2 + 6)
+    stresses = df[df["dtype"] == "stress"]["y_orig"].to_numpy()
+    expected = [10, 20, 30, 40, 50, 60] if predict else [1, 2, 3, 4, 5, 6]
+    np.testing.assert_allclose(stresses[:6], expected)
+
+
+@pytest.mark.parametrize(
+    ("replacement", "match"),
+    [
+        ("", "Frame 0 of reference.xyz has no dft_virial field"),
+        ('dft_virial="1.0 2.0 3.0"', "dft_virial has 3 components, expected 9"),
+        ('dft_virial=""', "dft_virial has 0 components, expected 9"),
+    ],
+)
+def test_read_cfgs_bad_reference_virial(in_tmp, replacement, match):
+    Path("reference.xyz").write_text(re.sub(r'dft_virial="[^"]*"', replacement, QUIP_OUTPUT, count=1))
+    with pytest.raises(ValueError, match=match):
+        GAPotential.read_cfgs("reference.xyz")
 
 
 def test_read_cfgs_legacy_virial(in_tmp, datapool):
@@ -460,6 +492,19 @@ def test_evaluate(trained_gap, gap_binaries, train_data):
     forces_orig = df_orig[df_orig["dtype"] == "force"]["y_orig"].to_numpy()
     forces_pred = df_predict[df_predict["dtype"] == "force"]["y_orig"].to_numpy()
     np.testing.assert_allclose(forces_pred, 0.5 * forces_orig, atol=1e-5)
+    stresses_orig = df_orig[df_orig["dtype"] == "stress"]["y_orig"].to_numpy()
+    stresses_pred = df_predict[df_predict["dtype"] == "stress"]["y_orig"].to_numpy()
+    assert len(stresses_orig) == 6 * len(train_data[0])
+    np.testing.assert_allclose(stresses_orig, np.ravel(train_data[3]), rtol=1e-6)
+    assert np.abs(stresses_orig).max() > 0
+    np.testing.assert_allclose(stresses_pred, 2 * stresses_orig, rtol=1e-6, atol=1e-5)
+
+
+def test_evaluate_without_stress(trained_gap, gap_binaries, train_data):
+    gap_binaries()
+    df_orig, df_predict = trained_gap.evaluate(*train_data)
+    assert df_orig.shape == df_predict.shape
+    assert "stress" not in set(df_orig["dtype"]) | set(df_predict["dtype"])
 
 
 def test_evaluate_quip_failure(trained_gap, gap_binaries, train_data):

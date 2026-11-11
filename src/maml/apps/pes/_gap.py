@@ -174,7 +174,7 @@ class GAPotential(LammpsPotential):
         return filename
 
     @staticmethod
-    def read_cfgs(filename, predict=False):
+    def read_cfgs(filename, predict=False, include_stress=False):
         """
         Read the configuration file.
 
@@ -185,6 +185,19 @@ class GAPotential(LammpsPotential):
                 "force" and "virial" fields written by quip instead of
                 "dft_force" and "dft_virial". virial_stress is None if quip
                 was run without virial=T.
+            include_stress (bool): Whether to add the virial stresses to the
+                DataFrame as "stress" rows.
+
+        Returns:
+            (data_pool, df): data_pool is a list of docs whose
+            outputs["virial_stress"] holds the six virial components in the
+            order (xx, yy, zz, xy, yz, zx). df has the energies, forces and,
+            if include_stress is True, stresses in its "y_orig" column.
+
+        Raises:
+            ValueError: If a frame has no reference virial (dft_virial), its
+                virial does not have 9 components, or include_stress is True
+                and a predicted frame has no virial.
         """
         type_convert = {"R": np.float32, "I": np.int64, "S": np.str_}
         data_pool = []
@@ -194,7 +207,8 @@ class GAPotential(LammpsPotential):
         lines = repl.sub("", string=lines)
 
         block_pattern = re.compile(r"(\n[0-9]+\n|^[0-9]+\n)(.+?)(?=\n[0-9]+\n|$)", re.S)
-        lattice_pattern = re.compile(r'Lattice="(.+)"')
+        # [^"]: a greedy .+ would run on to the closing quote of any later quoted field.
+        lattice_pattern = re.compile(r'Lattice="([^"]+)"')
         # energy_pattern = re.compile('dft_energy=(-?[0-9]+.[0-9]+)', re.I)
         energy_pattern = re.compile(r"(?<=\S{3}\s|dft_)energy=(-?[0-9]+.[0-9]+)")
         # Quoted ("..."), braced ({...}) or, for files written by older maml versions,
@@ -206,7 +220,7 @@ class GAPotential(LammpsPotential):
         position_pattern = re.compile("\n(.+?)(?=\nE.*|\n\n.*|$)", re.S)
         # formatify = lambda string: [float(s) for s in string.split()]
 
-        for size, block in block_pattern.findall(lines):
+        for frame, (size, block) in enumerate(block_pattern.findall(lines)):
             d = {"outputs": {}}
             size = int(size)
             lattice_str = lattice_pattern.findall(block)[0]
@@ -214,12 +228,18 @@ class GAPotential(LammpsPotential):
             energy_str = energy_pattern.findall(block)[-1]
             energy = float(energy_str)
             stress_matches = stress_pattern.findall(block)
-            if predict and not stress_matches:
-                virial_stress = None
-            else:
-                stress_str = next(s for s in stress_matches[0] if s)
-                full_virial = [float(s) for s in stress_str.split()]
+            virial_stress = None
+            if stress_matches:
+                full_virial = [float(s) for s in "".join(stress_matches[0]).split()]
+                if len(full_virial) != 9:
+                    raise ValueError(
+                        f"Frame {frame} of {filename}: {stress_key} has {len(full_virial)} components, expected 9."
+                    )
                 virial_stress = [full_virial[i] for i in [0, 4, 8, 1, 5, 6]]
+            elif not predict:
+                raise ValueError(f"Frame {frame} of {filename} has no {stress_key} field.")
+            elif include_stress:
+                raise ValueError(f"Frame {frame} of {filename} has no {stress_key} field; run quip with virial=T.")
             properties = properties_pattern.findall(block)[0].split(":")
             labels_columns = OrderedDict()
             labels = defaultdict()
@@ -244,7 +264,7 @@ class GAPotential(LammpsPotential):
             d["outputs"]["virial_stress"] = virial_stress
 
             data_pool.append(d)
-        _, df = convert_docs(docs=data_pool)
+        _, df = convert_docs(docs=data_pool, include_stress=include_stress)
         return data_pool, df
 
     def train(
@@ -465,7 +485,14 @@ class GAPotential(LammpsPotential):
             predict_energies (bool): Whether to predict energies of configurations.
             predict_forces (bool): Whether to predict forces of configurations.
             predict_stress (bool): Whether to predict virial stress of
-                configurations.
+                configurations. If True, both DataFrames also get six
+                "stress" rows per structure (xx, yy, zz, xy, yz, zx); the
+                reference stresses are zeros if test_stresses is None.
+
+        Returns:
+            (df_orig, df_predict): DataFrames of the reference and predicted
+            values, with the "y_orig", "n" and "dtype" columns of
+            maml.utils.convert_docs.
         """
         test_structures, test_forces, test_stresses = check_structures_forces_stresses(
             test_structures, test_forces, test_stresses
@@ -482,7 +509,7 @@ class GAPotential(LammpsPotential):
         with ScratchDir("."):
             _ = self.write_param(xml_file)
             original_file = self.write_cfgs(original_file, cfg_pool=predict_pool)
-            _, df_orig = self.read_cfgs(original_file)
+            _, df_orig = self.read_cfgs(original_file, include_stress=predict_stress)
 
             exe_command = ["quip"]
             exe_command.append(f"atoms_filename={original_file}")
@@ -500,7 +527,7 @@ class GAPotential(LammpsPotential):
             with open(predict_file, "w") as f:
                 f.write(stdout)
 
-            _, df_predict = self.read_cfgs(predict_file, predict=True)
+            _, df_predict = self.read_cfgs(predict_file, predict=True, include_stress=predict_stress)
 
         return df_orig, df_predict
 
