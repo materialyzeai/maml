@@ -12,9 +12,9 @@ from maml.data._mp import MaterialsProject
 class MaterialsProjectTest(PymatgenTest):
     def test_get(self):
         mp = MaterialsProject(SETTINGS.get("PMG_MAPI_KEY"))
-        features = ["pretty_formula", "band_gap", "formation_energy_per_atom", "e_above_hull", "elasticity.K_VRH"]
-        df = mp.get(criteria={"nelements": 1}, properties=features)
-        assert df.shape[0] > 700
+        features = ["band_gap", "formation_energy_per_atom", "energy_above_hull"]
+        df = mp.get(criteria={"formula": "Li2O"}, properties=features)
+        assert df.shape[0] >= 6
         assert df.shape[1] == len(features)
         assert set(df.columns) == set(features)
 

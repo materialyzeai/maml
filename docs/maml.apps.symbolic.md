@@ -14,19 +14,15 @@ Bases: `PenalizedLeastSquares`
 
 Adaptive lasso regression using OLS coefficients as the root-n estimator coefficients.
 
-### _penalty_jac(x, y, beta)
+### \_penalty_jac(x, y, beta)
 
 ### get_w(x, y)
 
 Get adaptive weights from data.
 
-
 * **Parameters**
-
-    * **x** (*np.ndarray*) – MxN input data array
-
-
-    * **y** (*np.ndarray*) – M output targets
+  * **x** (*np.ndarray*) – MxN input data array
+  * **y** (*np.ndarray*) – M output targets
 
 Returns: coefficients array.
 
@@ -34,16 +30,10 @@ Returns: coefficients array.
 
 Calculate the penalty from input x, output y and coefficient beta.
 
-
 * **Parameters**
-
-    * **beta** (*np.ndarray*) – N coefficients
-
-
-    * **x** (*np.ndarray*) – MxN input data array
-
-
-    * **y** (*np.ndarray*) – M output targets
+  * **beta** (*np.ndarray*) – N coefficients
+  * **x** (*np.ndarray*) – MxN input data array
+  * **y** (*np.ndarray*) – M output targets
 
 Returns: penalty value.
 
@@ -51,17 +41,11 @@ Returns: penalty value.
 
 Select feature indices from x.
 
-
 * **Parameters**
-
-    * **x** (*np.ndarray*) – MxN input data array
-
-
-    * **y** (*np.ndarray*) – M output targets
-
-
-    * **options** (*dict*) – options in the optimizations provided
-to scipy.optimize.minimize
+  * **x** (*np.ndarray*) – MxN input data array
+  * **y** (*np.ndarray*) – M output targets
+  * **options** (*dict*) – options in the optimizations provided
+    to scipy.optimize.minimize
 
 Returns: list of int indices.
 
@@ -78,16 +62,10 @@ and reference in [https://projecteuclid.org/download/pdfview_1/euclid.aos/120101
 Get constraints dictionary from data, e.g.,
 {“func”: lambda beta: fun(x, y, beta), “type”: “ineq”}.
 
-
 * **Parameters**
-
-    * **x** (*np.ndarray*) – MxN input data array
-
-
-    * **y** (*np.ndarray*) – M output targets
-
-
-    * **beta** (*np.ndarray*) – placeholder
+  * **x** (*np.ndarray*) – MxN input data array
+  * **y** (*np.ndarray*) – M output targets
+  * **beta** (*np.ndarray*) – placeholder
 
 Returns: dict of constraints.
 
@@ -95,13 +73,9 @@ Returns: dict of constraints.
 
 Jacobian of cost functions.
 
-
 * **Parameters**
-
-    * **x** – ndarray
-
-
-    * **y** – ndarray
+  * **x** – ndarray
+  * **y** – ndarray
 
 Returns: callable
 
@@ -109,16 +83,10 @@ Returns: callable
 
 Get loss function from data and tentative coefficients beta.
 
-
 * **Parameters**
-
-    * **x** (*np.ndarray*) – MxN input data array
-
-
-    * **y** (*np.ndarray*) – M output targets
-
-
-    * **beta** (*np.ndarray*) – N coefficients
+  * **x** (*np.ndarray*) – MxN input data array
+  * **y** (*np.ndarray*) – M output targets
+  * **beta** (*np.ndarray*) – N coefficients
 
 Returns: loss value.
 
@@ -146,17 +114,11 @@ Iterative SIS.
 
 Evaluate the linear models using x, and y test data.
 
-
 * **Parameters**
-
-    * **x** (*np.ndarray*) – MxN input data array
-
-
-    * **y** (*np.ndarray*) – M output targets
-
-
-    * **metric** (*str*) – scorer function, used with
-sklearn.metrics.get_scorer
+  * **x** (*np.ndarray*) – MxN input data array
+  * **y** (*np.ndarray*) – M output targets
+  * **metric** (*str*) – scorer function, used with
+    sklearn.metrics.get_scorer
 
 Returns: float.
 
@@ -172,23 +134,14 @@ Run the ISIS
 :param metric: scorer function, used with
 
 > sklearn.metrics.get_scorer
-
-
 * **Parameters**
-
-    * **options** –
-
-
-    * **step** (*float*) – step to update gamma with.
-
-
+  * **options** –
+  * **step** (*float*) – step to update gamma with.
 * **Returns**
-np.array of index of selected features
-coeff(np.array): np.array of coeff of selected features
-
-
+  np.array of index of selected features
+  coeff(np.array): np.array of coeff of selected features
 * **Return type**
-find_sel(np.array)
+  find_sel(np.array)
 
 ## *class* maml.apps.symbolic.L0BrutalForce(lambd: float, \*\*kwargs)
 
@@ -199,30 +152,20 @@ This method takes all possible combinations of features
 and optimize the following loss function
 
 > 1/2 \* mean((y-x @ beta)\*\*2) + lambd \*
-
 > ```default
 > |
 > ```
-
 > beta|_0.
 
 ### select(x: np.ndarray, y: np.ndarray, options: dict | None = None, n_job: int = 1)
 
 L0 combinatorial optimization.
 
-
 * **Parameters**
-
-    * **x** (*np.ndarray*) – design matrix
-
-
-    * **y** (*np.ndarray*) – target vector
-
-
-    * **options** – Dict of options.
-
-
-    * **n_job** (*int*) – number of cpu
+  * **x** (*np.ndarray*) – design matrix
+  * **y** (*np.ndarray*) – target vector
+  * **options** – Dict of options.
+  * **n_job** (*int*) – number of cpu
 
 Returns:
 
@@ -232,22 +175,16 @@ Bases: `PenalizedLeastSquares`
 
 Simple Lasso regression.
 
-### _penalty_jac(x, y, beta)
+### \_penalty_jac(x, y, beta)
 
 ### penalty(beta: np.ndarray, x: np.ndarray | None = None, y: np.ndarray | None = None)
 
 Calculate the penalty from input x, output y and coefficient beta.
 
-
 * **Parameters**
-
-    * **beta** (*np.ndarray*) – N coefficients
-
-
-    * **x** (*np.ndarray*) – MxN input data array
-
-
-    * **y** (*np.ndarray*) – M output targets
+  * **beta** (*np.ndarray*) – N coefficients
+  * **x** (*np.ndarray*) – MxN input data array
+  * **y** (*np.ndarray*) – M output targets
 
 Returns: penalty value.
 
@@ -288,29 +225,26 @@ Generate string representation for output
 
 Returns: name of the output
 
-### *property* is_binary(*: boo* )
+### *property* is_binary(    *: boo* )
 
 True if the operator takes two arguments else False.
 
-
 * **Type**
-Returns
+  Returns
 
-### *property* is_commutative(*: boo* )
+### *property* is_commutative(    *: boo* )
 
 True if the operator is commutative else False.
 
-
 * **Type**
-Returns
+  Returns
 
-### *property* is_unary(*: boo* )
+### *property* is_unary(    *: boo* )
 
 True if the operator takes one argument else False.
 
-
 * **Type**
-Returns
+  Returns
 
 ### support_op_rep(_ = [‘^2’, ‘^3’, ‘sqrt’, ‘abssqrt’, ‘cbrt’, ‘exp’, ‘abs’, ‘log10’, ‘abslog10’, ‘+’, ‘-’, ‘\*’, ‘/’, ‘|+|’, ‘|-|’, ‘sum_power_2’, ‘sum_exp’_ )
 
@@ -321,7 +255,7 @@ Bases: `PenalizedLeastSquares`
 Smoothly clipped absolute deviation (SCAD),
 equation 12 and 13 in [https://orfe.princeton.edu/~jqfan/papers/06/SIS.pdf](https://orfe.princeton.edu/~jqfan/papers/06/SIS.pdf).
 
-### _penalty_jac(x, y, beta)
+### \_penalty_jac(x, y, beta)
 
 ### penalty(beta: np.ndarray, x: np.ndarray | None = None, y: np.ndarray | None = None)
 
@@ -331,16 +265,10 @@ Calculate the SCAD penalty from input x, output y
 and coefficient beta
 ```
 
-
 * **Parameters**
-
-    * **beta** (*np.ndarray*) – N coefficients
-
-
-    * **x** (*np.ndarray*) – MxN input data array
-
-
-    * **y** (*np.ndarray*) – M output targets
+  * **beta** (*np.ndarray*) – N coefficients
+  * **x** (*np.ndarray*) – MxN input data array
+  * **y** (*np.ndarray*) – M output targets
 
 Returns: penalty value.
 
@@ -351,11 +279,8 @@ Bases: `object`
 Sure independence screening method.
 The method consists of two steps:
 
->
 > 1. Screen
-
->
-> 1. Select.
+> 2. Select.
 
 ### compute_residual(x, y)
 
@@ -386,13 +311,9 @@ Returns: selected feature indices
 Simple screening method by comparing the correlation between features
 and the target.
 
-
 * **Parameters**
-
-    * **x** (*np.ndarray*) – input array
-
-
-    * **y** (*np.ndarray*) – target array
+  * **x** (*np.ndarray*) – input array
+  * **y** (*np.ndarray*) – target array
 
 Returns: top indices
 
@@ -410,9 +331,8 @@ Select features using selectors
 
 Set gamma.
 
-
 * **Parameters**
-**gamma** (*float*) – new gamma value
+  **gamma** (*float*) – new gamma value
 
 ### set_selector(selector: BaseSelector)
 
@@ -425,9 +345,8 @@ Set new selector
 Update the sis object so that sis.select
 return at least one feature.
 
-
 * **Parameters**
-**ratio** (*float*) – ratio to update the parameters
+  **ratio** (*float*) – ratio to update the parameters
 
 ## maml.apps.symbolic._feature_generator module
 
@@ -484,29 +403,26 @@ Generate string representation for output
 
 Returns: name of the output
 
-#### *property* is_binary(*: boo* )
+#### *property* is_binary(    *: boo* )
 
 True if the operator takes two arguments else False.
 
-
 * **Type**
-Returns
+  Returns
 
-#### *property* is_commutative(*: boo* )
+#### *property* is_commutative(    *: boo* )
 
 True if the operator is commutative else False.
 
-
 * **Type**
-Returns
+  Returns
 
-#### *property* is_unary(*: boo* )
+#### *property* is_unary(    *: boo* )
 
 True if the operator takes one argument else False.
 
-
 * **Type**
-Returns
+  Returns
 
 #### support_op_rep(_ = [‘^2’, ‘^3’, ‘sqrt’, ‘abssqrt’, ‘cbrt’, ‘exp’, ‘abs’, ‘log10’, ‘abslog10’, ‘+’, ‘-’, ‘\*’, ‘/’, ‘|+|’, ‘|-|’, ‘sum_power_2’, ‘sum_exp’_ )
 
@@ -548,13 +464,9 @@ Helper function to update the dataframe with new generated feature array.
 
 Generate new features by applying operators to columns in feature_df.
 
-
 * **Parameters**
-
-    * **feature_df** (*pd.DataFrame*) – dataframe of original features
-
-
-    * **operators** (*list*) – list of str of operators (check Operator.support_op_rep for reference)
+  * **feature_df** (*pd.DataFrame*) – dataframe of original features
+  * **operators** (*list*) – list of str of operators (check Operator.support_op_rep for reference)
 
 Returns: dataframe of augmented features
 
@@ -568,19 +480,15 @@ Bases: `PenalizedLeastSquares`
 
 Adaptive lasso regression using OLS coefficients as the root-n estimator coefficients.
 
-#### _penalty_jac(x, y, beta)
+#### \_penalty_jac(x, y, beta)
 
 #### get_w(x, y)
 
 Get adaptive weights from data.
 
-
 * **Parameters**
-
-    * **x** (*np.ndarray*) – MxN input data array
-
-
-    * **y** (*np.ndarray*) – M output targets
+  * **x** (*np.ndarray*) – MxN input data array
+  * **y** (*np.ndarray*) – M output targets
 
 Returns: coefficients array.
 
@@ -588,16 +496,10 @@ Returns: coefficients array.
 
 Calculate the penalty from input x, output y and coefficient beta.
 
-
 * **Parameters**
-
-    * **beta** (*np.ndarray*) – N coefficients
-
-
-    * **x** (*np.ndarray*) – MxN input data array
-
-
-    * **y** (*np.ndarray*) – M output targets
+  * **beta** (*np.ndarray*) – N coefficients
+  * **x** (*np.ndarray*) – MxN input data array
+  * **y** (*np.ndarray*) – M output targets
 
 Returns: penalty value.
 
@@ -605,17 +507,11 @@ Returns: penalty value.
 
 Select feature indices from x.
 
-
 * **Parameters**
-
-    * **x** (*np.ndarray*) – MxN input data array
-
-
-    * **y** (*np.ndarray*) – M output targets
-
-
-    * **options** (*dict*) – options in the optimizations provided
-to scipy.optimize.minimize
+  * **x** (*np.ndarray*) – MxN input data array
+  * **y** (*np.ndarray*) – M output targets
+  * **options** (*dict*) – options in the optimizations provided
+    to scipy.optimize.minimize
 
 Returns: list of int indices.
 
@@ -626,19 +522,15 @@ Bases: `object`
 Feature selector. This is meant to work on relatively smaller
 number of features.
 
-#### *classmethod* _get_param_names()
+#### *classmethod* \_get_param_names()
 
 #### compute_residual(x: ndarray, y: ndarray)
 
 Compute.
 
-
 * **Parameters**
-
-    * **x** (*np.ndarray*) – design matrix
-
-
-    * **y** (*np.ndarray*) – target vector
+  * **x** (*np.ndarray*) – design matrix
+  * **y** (*np.ndarray*) – target vector
 
 Returns: residual vector.
 
@@ -647,16 +539,10 @@ Returns: residual vector.
 Get constraints dictionary from data, e.g.,
 {“func”: lambda beta: fun(x, y, beta), “type”: “ineq”}.
 
-
 * **Parameters**
-
-    * **x** (*np.ndarray*) – MxN input data array
-
-
-    * **y** (*np.ndarray*) – M output targets
-
-
-    * **beta** (*np.ndarray*) – parameter to optimize
+  * **x** (*np.ndarray*) – MxN input data array
+  * **y** (*np.ndarray*) – M output targets
+  * **beta** (*np.ndarray*) – parameter to optimize
 
 Returns: dict of constraints.
 
@@ -686,17 +572,11 @@ Returns: loss value.
 
 Evaluate the linear models using x, and y test data.
 
-
 * **Parameters**
-
-    * **x** (*np.ndarray*) – MxN input data array
-
-
-    * **y** (*np.ndarray*) – M output targets
-
-
-    * **metric** (*str*) – scorer function, used with
-sklearn.metrics.get_scorer
+  * **x** (*np.ndarray*) – MxN input data array
+  * **y** (*np.ndarray*) – M output targets
+  * **metric** (*str*) – scorer function, used with
+    sklearn.metrics.get_scorer
 
 Returns:
 
@@ -725,9 +605,8 @@ parameter names mapped to their values
 
 Predict the results using sparsified coefficients.
 
-
 * **Parameters**
-**x** (*np.ndarray*) – design matrix
+  **x** (*np.ndarray*) – design matrix
 
 Returns: ndarray
 
@@ -750,13 +629,10 @@ Set the parameters of this selector
 :param \*\*params: dict
 :param Selector parameters.:
 
-
 * **Returns**
-selector instance
-
-
+  selector instance
 * **Return type**
-self
+  self
 
 ### *class* maml.apps.symbolic._selectors.DantzigSelector(lambd, sigma=1.0, \*\*kwargs)
 
@@ -771,16 +647,10 @@ and reference in [https://projecteuclid.org/download/pdfview_1/euclid.aos/120101
 Get constraints dictionary from data, e.g.,
 {“func”: lambda beta: fun(x, y, beta), “type”: “ineq”}.
 
-
 * **Parameters**
-
-    * **x** (*np.ndarray*) – MxN input data array
-
-
-    * **y** (*np.ndarray*) – M output targets
-
-
-    * **beta** (*np.ndarray*) – placeholder
+  * **x** (*np.ndarray*) – MxN input data array
+  * **y** (*np.ndarray*) – M output targets
+  * **beta** (*np.ndarray*) – placeholder
 
 Returns: dict of constraints.
 
@@ -788,13 +658,9 @@ Returns: dict of constraints.
 
 Jacobian of cost functions.
 
-
 * **Parameters**
-
-    * **x** – ndarray
-
-
-    * **y** – ndarray
+  * **x** – ndarray
+  * **y** – ndarray
 
 Returns: callable
 
@@ -802,16 +668,10 @@ Returns: callable
 
 Get loss function from data and tentative coefficients beta.
 
-
 * **Parameters**
-
-    * **x** (*np.ndarray*) – MxN input data array
-
-
-    * **y** (*np.ndarray*) – M output targets
-
-
-    * **beta** (*np.ndarray*) – N coefficients
+  * **x** (*np.ndarray*) – MxN input data array
+  * **y** (*np.ndarray*) – M output targets
+  * **beta** (*np.ndarray*) – N coefficients
 
 Returns: loss value.
 
@@ -824,30 +684,20 @@ This method takes all possible combinations of features
 and optimize the following loss function
 
 > 1/2 \* mean((y-x @ beta)\*\*2) + lambd \*
-
 > ```default
 > |
 > ```
-
 > beta|_0.
 
 #### select(x: np.ndarray, y: np.ndarray, options: dict | None = None, n_job: int = 1)
 
 L0 combinatorial optimization.
 
-
 * **Parameters**
-
-    * **x** (*np.ndarray*) – design matrix
-
-
-    * **y** (*np.ndarray*) – target vector
-
-
-    * **options** – Dict of options.
-
-
-    * **n_job** (*int*) – number of cpu
+  * **x** (*np.ndarray*) – design matrix
+  * **y** (*np.ndarray*) – target vector
+  * **options** – Dict of options.
+  * **n_job** (*int*) – number of cpu
 
 Returns:
 
@@ -857,22 +707,16 @@ Bases: `PenalizedLeastSquares`
 
 Simple Lasso regression.
 
-#### _penalty_jac(x, y, beta)
+#### \_penalty_jac(x, y, beta)
 
 #### penalty(beta: np.ndarray, x: np.ndarray | None = None, y: np.ndarray | None = None)
 
 Calculate the penalty from input x, output y and coefficient beta.
 
-
 * **Parameters**
-
-    * **beta** (*np.ndarray*) – N coefficients
-
-
-    * **x** (*np.ndarray*) – MxN input data array
-
-
-    * **y** (*np.ndarray*) – M output targets
+  * **beta** (*np.ndarray*) – N coefficients
+  * **x** (*np.ndarray*) – MxN input data array
+  * **y** (*np.ndarray*) – M output targets
 
 Returns: penalty value.
 
@@ -883,9 +727,9 @@ Bases: `BaseSelector`
 Penalized least squares. In addition to minimizing the sum of squares loss,
 it adds an additional penalty to the coefficients.
 
-#### _penalty_jac(x, y, beta)
+#### \_penalty_jac(x, y, beta)
 
-#### _sse_jac(x, y, beta)
+#### \_sse_jac(x, y, beta)
 
 #### construct_constraints(x: np.ndarray, y: np.ndarray, beta: np.ndarray | None = None)
 
@@ -940,7 +784,7 @@ Bases: `PenalizedLeastSquares`
 Smoothly clipped absolute deviation (SCAD),
 equation 12 and 13 in [https://orfe.princeton.edu/~jqfan/papers/06/SIS.pdf](https://orfe.princeton.edu/~jqfan/papers/06/SIS.pdf).
 
-#### _penalty_jac(x, y, beta)
+#### \_penalty_jac(x, y, beta)
 
 #### penalty(beta: np.ndarray, x: np.ndarray | None = None, y: np.ndarray | None = None)
 
@@ -950,16 +794,10 @@ Calculate the SCAD penalty from input x, output y
 and coefficient beta
 ```
 
-
 * **Parameters**
-
-    * **beta** (*np.ndarray*) – N coefficients
-
-
-    * **x** (*np.ndarray*) – MxN input data array
-
-
-    * **y** (*np.ndarray*) – M output targets
+  * **beta** (*np.ndarray*) – N coefficients
+  * **x** (*np.ndarray*) – MxN input data array
+  * **y** (*np.ndarray*) – M output targets
 
 Returns: penalty value.
 
@@ -1020,16 +858,10 @@ Base selector using cvxpy (CP).
 Get constraints dictionary from data, e.g.,
 {“func”: lambda beta: fun(x, y, beta), “type”: “ineq”}.
 
-
 * **Parameters**
-
-    * **x** (*np.ndarray*) – MxN input data array
-
-
-    * **y** (*np.ndarray*) – M output targets
-
-
-    * **beta** – (np.ndarray): target variable for optimization
+  * **x** (*np.ndarray*) – MxN input data array
+  * **y** (*np.ndarray*) – M output targets
+  * **beta** – (np.ndarray): target variable for optimization
 
 Returns: dict of constraints.
 
@@ -1154,17 +986,11 @@ Iterative SIS.
 
 Evaluate the linear models using x, and y test data.
 
-
 * **Parameters**
-
-    * **x** (*np.ndarray*) – MxN input data array
-
-
-    * **y** (*np.ndarray*) – M output targets
-
-
-    * **metric** (*str*) – scorer function, used with
-sklearn.metrics.get_scorer
+  * **x** (*np.ndarray*) – MxN input data array
+  * **y** (*np.ndarray*) – M output targets
+  * **metric** (*str*) – scorer function, used with
+    sklearn.metrics.get_scorer
 
 Returns: float.
 
@@ -1180,23 +1006,14 @@ Run the ISIS
 :param metric: scorer function, used with
 
 > sklearn.metrics.get_scorer
-
-
 * **Parameters**
-
-    * **options** –
-
-
-    * **step** (*float*) – step to update gamma with.
-
-
+  * **options** –
+  * **step** (*float*) – step to update gamma with.
 * **Returns**
-np.array of index of selected features
-coeff(np.array): np.array of coeff of selected features
-
-
+  np.array of index of selected features
+  coeff(np.array): np.array of coeff of selected features
 * **Return type**
-find_sel(np.array)
+  find_sel(np.array)
 
 ### *class* maml.apps.symbolic._sis.SIS(gamma=0.1, selector: BaseSelector | None = None, verbose: bool = True)
 
@@ -1205,11 +1022,8 @@ Bases: `object`
 Sure independence screening method.
 The method consists of two steps:
 
->
 > 1. Screen
-
->
-> 1. Select.
+> 2. Select.
 
 #### compute_residual(x, y)
 
@@ -1240,13 +1054,9 @@ Returns: selected feature indices
 Simple screening method by comparing the correlation between features
 and the target.
 
-
 * **Parameters**
-
-    * **x** (*np.ndarray*) – input array
-
-
-    * **y** (*np.ndarray*) – target array
+  * **x** (*np.ndarray*) – input array
+  * **y** (*np.ndarray*) – target array
 
 Returns: top indices
 
@@ -1264,9 +1074,8 @@ Select features using selectors
 
 Set gamma.
 
-
 * **Parameters**
-**gamma** (*float*) – new gamma value
+  **gamma** (*float*) – new gamma value
 
 #### set_selector(selector: BaseSelector)
 
@@ -1279,9 +1088,8 @@ Set new selector
 Update the sis object so that sis.select
 return at least one feature.
 
-
 * **Parameters**
-**ratio** (*float*) – ratio to update the parameters
+  **ratio** (*float*) – ratio to update the parameters
 
 ### maml.apps.symbolic._sis._best_combination(x, y, find_sel, find_sel_new, metric: str = ‘neg_mean_absolute_error’)
 

@@ -4,12 +4,13 @@ import os
 import unittest
 
 import numpy as np
+import pytest
 from pymatgen.core.structure import Structure
 
 from maml.apps.bowsr.acquisition import ensure_rng
 from maml.apps.bowsr.perturbation import WyckoffPerturbation
 from maml.apps.bowsr.preprocessing import DummyScaler, StandardScaler
-from maml.apps.bowsr.target_space import TargetSpace
+from maml.apps.bowsr.target_space import TargetSpace, _hashable
 
 test_lfpo = Structure.from_file(os.path.join(os.path.dirname(__file__), "test_structures", "test_lfpo.cif"))
 
@@ -250,6 +251,59 @@ class TargetSpaceTest(unittest.TestCase):
             assert len(self.space4) == i + 1
         self.space4.set_empty()
         assert len(self.space4) == 0
+
+
+def _space(relax_coords, relax_lattice):
+    wps = [WyckoffPerturbation(62, "c"), WyckoffPerturbation(62, "d")]
+    wps[0].sanity_check(test_lfpo[4])
+    wps[1].sanity_check(test_lfpo[20])
+    return TargetSpace(
+        target_func=lambda x: -float(np.sum(x**2)),
+        wps=wps,
+        abc_dim=3,
+        angles_dim=0,
+        relax_coords=relax_coords,
+        relax_lattice=relax_lattice,
+        scaler=DummyScaler(),
+        random_state=ensure_rng(0),
+    )
+
+
+def test_hashable():
+    assert _hashable(np.array([1, 2.5])) == (1.0, 2.5)
+    assert {_hashable(np.array([0.1, 0.2])): 1}[(0.1, 0.2)] == 1
+
+
+@pytest.mark.parametrize(
+    ("relax_coords", "relax_lattice", "dim"), [(True, True, 8), (True, False, 5), (False, True, 3)]
+)
+def test_dims_and_bounds(relax_coords, relax_lattice, dim):
+    space = _space(relax_coords, relax_lattice)
+    assert space.dim == dim
+    space.set_bounds(abc_bound=0.5, element_wise_wyckoff_bounds={"P": 0.1})
+    assert space.bounds.shape == (dim, 2)
+    if relax_lattice:
+        assert np.allclose(space.bounds[-3:], [[-0.5, 0.5]] * 3)
+    assert repr(space) == (
+        f"TargetSpace(relax_coords={relax_coords}, relax_lattice={relax_lattice}, dim={dim}, length=0)"
+    )
+
+
+def test_no_degrees_of_freedom():
+    with pytest.raises(ValueError, match="No degrees of freedom"):
+        _space(False, False)
+
+
+def test_probe_records_and_lhs_sample_within_bounds():
+    space = _space(True, True)
+    space.set_bounds()
+    samples = space.lhs_sample(5)
+    assert samples.shape == (5, space.dim)
+    assert np.all((samples >= space.bounds[:, 0]) & (samples <= space.bounds[:, 1]))
+    target = space.probe(samples[0])
+    assert target == pytest.approx(-np.sum(samples[0] ** 2))
+    assert len(space) == 1
+    assert np.allclose(space.params[0], samples[0])
 
 
 if __name__ == "__main__":

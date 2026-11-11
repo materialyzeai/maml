@@ -18,7 +18,7 @@ from monty.os import cd
 
 
 @task
-def make_doc(ctx):
+def make_docs(ctx):
     """
     Generate API documentation + run Sphinx.
 
@@ -28,7 +28,7 @@ def make_doc(ctx):
     with cd("docs"):
         ctx.run("rm maml.*.rst", warn=True)
         ctx.run("touch index.rst", warn=True)
-        ctx.run("sphinx-apidoc -P -M -d 6 -o . -f ../maml")
+        ctx.run("sphinx-apidoc -P -M -d 6 -o . -f ../src/maml")
         ctx.run("rm maml*.tests.*rst", warn=True)
         ctx.run("sphinx-build -M markdown . .")
         ctx.run("rm *.rst", warn=True)
@@ -62,7 +62,7 @@ def make_doc(ctx):
 
 
 @task
-def update_doc(ctx):
+def update_docs(ctx):
     """
     Update the web documentation.
 
@@ -70,7 +70,7 @@ def update_doc(ctx):
     """
     ctx.run("cp README.rst docs/")
     ctx.run("cp api-docs-source/conf.py docs/conf.py")
-    make_doc(ctx)
+    make_docs(ctx)
     ctx.run("git add .")
     ctx.run('git commit -a -m "Update docs"')
     ctx.run("git push")
@@ -84,17 +84,17 @@ def publish(ctx):
     :param ctx:
     """
     ctx.run("rm dist/*.*", warn=True)
-    ctx.run("python setup.py sdist bdist_wheel")
+    ctx.run("python -m build")
     ctx.run("twine upload dist/*")
 
 
 @task
 def set_ver(ctx, version):
     lines = []
-    with open("setup.py") as f:
+    with open("pyproject.toml") as f:
         for l in f:
-            lines.append(re.sub(r"version=([^,]+),", 'version="%s",' % version, l.rstrip()))
-    with open("setup.py", "w") as f:
+            lines.append(re.sub(r"^version = ([^,]+)", f'version = "{version}"', l.rstrip()))
+    with open("pyproject.toml", "w") as f:
         f.write("\n".join(lines) + "\n")
 
 
@@ -111,7 +111,7 @@ def release(ctx, version=datetime.datetime.now().strftime("%Y.%-m.%-d"), notest=
     toks = desc.split("\n")
     desc = "\n".join(toks[:-1]).strip()
     if not nodoc:
-        make_doc(ctx)
+        make_docs(ctx)
         ctx.run("git add .")
         ctx.run('git commit -a -m "Update docs"')
         ctx.run("git push")
@@ -131,6 +131,6 @@ def release(ctx, version=datetime.datetime.now().strftime("%Y.%-m.%-d"), notest=
     )
     print(response.text)
     ctx.run("rm -f dist/*.*", warn=True)
-    ctx.run("python setup.py sdist bdist_wheel", warn=True)
+    ctx.run("python -m build", warn=True)
     ctx.run("twine upload --skip-existing dist/*.whl", warn=True)
     ctx.run("twine upload --skip-existing dist/*.tar.gz", warn=True)

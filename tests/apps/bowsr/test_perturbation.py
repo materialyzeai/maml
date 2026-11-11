@@ -26,14 +26,14 @@ class WyckoffPerturbationTest(unittest.TestCase):
         lfpo_sd = lfpo_sa.get_symmetry_dataset()
         lfpo_symm_ops = [
             SymmOp.from_rotation_and_translation(rotation, translation, tol=0.1)
-            for rotation, translation in zip(lfpo_sd["rotations"], lfpo_sd["translations"])
+            for rotation, translation in zip(lfpo_sd["rotations"], lfpo_sd["translations"], strict=True)
         ]
         self.test_refined_lco = get_standardized_structure(test_lco)
         lco_sa = SpacegroupAnalyzer(self.test_refined_lco)
         lco_sd = lco_sa.get_symmetry_dataset()
         lco_symm_ops = [
             SymmOp.from_rotation_and_translation(rotation, translation, tol=0.1)
-            for rotation, translation in zip(lco_sd["rotations"], lco_sd["translations"])
+            for rotation, translation in zip(lco_sd["rotations"], lco_sd["translations"], strict=True)
         ]
         self.wp1 = WyckoffPerturbation(62, wyckoff_symbol="a", symmetry_ops=lfpo_symm_ops)
         self.wp2 = WyckoffPerturbation(62, wyckoff_symbol="c", symmetry_ops=lfpo_symm_ops)
@@ -139,12 +139,12 @@ class LatticePerturbationTest(unittest.TestCase):
     def test_crystal_system(self):
         assert self.lp1.crys_system == "orthorhombic"
         assert self.lp2.crys_system == "rhombohedral"
-        assert crystal_system(72), "orthorhombic"
-        assert crystal_system(147), "hexagonal"
-        assert crystal_system(148), "rhombohedral"
-        assert crystal_system(229), "cubic"
-        assert crystal_system(12), "monoclinic"
-        assert crystal_system(1), "triclinic"
+        assert crystal_system(72) == "orthorhombic"
+        assert crystal_system(147) == "hexagonal"
+        assert crystal_system(148) == "rhombohedral"
+        assert crystal_system(229) == "cubic"
+        assert crystal_system(12) == "monoclinic"
+        assert crystal_system(1) == "triclinic"
 
     def test_sanity_check(self):
         assert self.lp1._lattice is None

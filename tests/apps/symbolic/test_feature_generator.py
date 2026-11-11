@@ -6,6 +6,7 @@ from functools import partial
 
 import numpy as np
 import pandas as pd
+import pytest
 from pymatgen.util.testing import PymatgenTest
 
 from maml.apps.symbolic import FeatureGenerator, Operator
@@ -239,7 +240,8 @@ class TestFeatureGenerator(PymatgenTest):
         assert np.allclose(nf_df["((i2) - (i1))"].values, (self.df["i2"] - self.df["i1"]).values)
 
         ops = ["^2", "abcd"]
-        self.assertRaises(ValueError, generate_feature, self.df, ops)
+        with pytest.raises(ValueError, match="unsupported operators"):
+            generate_feature(self.df, ops)
 
     def testFeatureGenerator(self):
         ops = ["^2", "+", "-"]
@@ -294,6 +296,44 @@ class TestFeatureGenerator(PymatgenTest):
         nf2_df = fg.augment(n=2)
         assert list(nf1_df.columns) == new_f1
         assert list(nf2_df.columns) == new_f2
+
+
+@pytest.fixture
+def two_feature_df() -> pd.DataFrame:
+    return pd.DataFrame({"a": [1.0, 2.0, 3.0], "b": [4.0, 5.0, 6.0]})
+
+
+@pytest.mark.parametrize(
+    ("operators", "expected"),
+    [
+        # only binary operators: the diagonal (a, a) pairs are skipped
+        (["-"], {"((a) - (b))": [-3.0, -3.0, -3.0], "((b) - (a))": [3.0, 3.0, 3.0]}),
+        # only unary operators: off-diagonal (a, b) pairs are skipped
+        (["^2"], {"(a)^2": [1.0, 4.0, 9.0], "(b)^2": [16.0, 25.0, 36.0]}),
+    ],
+    ids=["binary_only", "unary_only"],
+)
+def test_generate_feature_single_operator_kind(two_feature_df, operators, expected):
+    out = generate_feature(two_feature_df, operators)
+    assert list(out.columns) == ["a", "b", *expected]
+    for name, values in expected.items():
+        np.testing.assert_allclose(out[name], values)
+    # input frame is not mutated
+    assert list(two_feature_df.columns) == ["a", "b"]
+
+
+@pytest.mark.parametrize(("rep", "unary"), [("^2", True), ("sqrt", True), ("+", False), ("/", False)])
+def test_operator_infers_arity_from_rep(rep, unary):
+    op = Operator(operation=operation_dict[rep]["kwgs"]["operation"], rep=rep, unary=False, commutative=False)
+    assert op.is_unary is unary
+    assert op.is_binary is not unary
+    assert str(op) == rep
+
+
+def test_abslog10_operator():
+    op = Operator.from_str("abslog10")
+    np.testing.assert_allclose(op(np.array([-100.0, 10.0, 0.01])), [2.0, 1.0, -2.0])
+    assert op.gen_name("a") == "log10(|a|)"
 
 
 if __name__ == "__main__":

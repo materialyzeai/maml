@@ -29,7 +29,7 @@ a list of DataFrame/numpy.ndarray.
 
 ### *abc_impl(* = <_abc.*abc_data object* )
 
-### _is_multi_output()
+### \_is_multi_output()
 
 ### *sklearn_auto_wrap_output_keys(* = {‘transform’_ )
 
@@ -46,13 +46,9 @@ the feature dimension, e.g., MLP models.
 
 Place holder for fit API.
 
-
 * **Parameters**
-
-    * **x** – Any inputs
-
-
-    * **y** – Any outputs
+  * **x** – Any inputs
+  * **y** – Any outputs
 
 Returns: self
 
@@ -61,13 +57,10 @@ Returns: self
 Transform a list of objs. If the return data is DataFrame,
 use df.xs(index, level=’input_index’) to get the result for the i-th object.
 
-
 * **Parameters**
-**objs** (*list*) – A list of objects.
-
-
+  **objs** (*list*) – A list of objects.
 * **Returns**
-One or a list of pandas data frame/numpy ndarray
+  One or a list of pandas data frame/numpy ndarray
 
 ### transform_one(obj: Any)
 
@@ -81,40 +74,27 @@ Abstract Base class for a Model. Basically, it usually wraps around a deep
 learning package, e.g., the Sequential Model in Keras, but provides for
 transparent conversion of arbitrary input and outputs.
 
-### _predict(features: ndarray, \*\*kwargs)
+### \_predict(features: ndarray, \*\*kwargs)
 
 Predict the values given a set of inputs based on fitted models.
 
-
 * **Parameters**
-**features** (*np.ndarray*) – array-like input features.
-
-
+  **features** (*np.ndarray*) – array-like input features.
 * **Returns**
-List of output objects.
+  List of output objects.
 
 ### fit(features: list | np.ndarray, targets: list | np.ndarray | None = None, val_features: list | np.ndarray | None = None, val_targets: list | np.ndarray | None = None, \*\*kwargs)
 
-
 * **Parameters**
-
-    * **features** (*list*\* or \**np.ndarray*) – Numerical input feature list or
-numpy array with dim (m, n) where m is the number of data and
-n is the feature dimension.
-
-
-    * **targets** (*list*\* or \**np.ndarray*) – Numerical output target list, or
-numpy array with dim (m, ).
-
-
-    * **val_features** (*list*\* or \**np.ndarray*) – validation features
-
-
-    * **val_targets** (*list*\* or \**np.ndarray*) – validation targets.
-
-
+  * **features** (*list*\* or \**np.ndarray*) – Numerical input feature list or
+    numpy array with dim (m, n) where m is the number of data and
+    n is the feature dimension.
+  * **targets** (*list*\* or \**np.ndarray*) – Numerical output target list, or
+    numpy array with dim (m, ).
+  * **val_features** (*list*\* or \**np.ndarray*) – validation features
+  * **val_targets** (*list*\* or \**np.ndarray*) – validation targets.
 * **Returns**
-self
+  self
 
 ### predict_objs(objs: list | np.ndarray)
 
@@ -128,22 +108,12 @@ Structure objects.
 
 Train the models from object, target pairs.
 
-
 * **Parameters**
-
-    * **objs** (*list*\* of \**objects*) – List of objects
-
-
-    * **targets** (*list*) – list of float or np.ndarray
-
-
-    * **val_objs** (*list*\* of \**objects*) – list of validation objects
-
-
-    * **val_targets** (*list*) – list of validation targets
-
-
-    * **\*\*kwargs** –
+  * **objs** (*list*\* of \**objects*) – List of objects
+  * **targets** (*list*) – list of float or np.ndarray
+  * **val_objs** (*list*\* of \**objects*) – list of validation objects
+  * **val_targets** (*list*) – list of validation targets
+  * **\*\*kwargs** –
 
 Returns: self
 
@@ -161,9 +131,8 @@ Dummy Describer that does nothing.
 
 Does nothing but return the original features.
 
-
 * **Parameters**
-**obj** – Any inputs
+  **obj** – Any inputs
 
 Returns: Any outputs
 
@@ -173,33 +142,23 @@ Bases: `BaseModel`, `KerasMixin`
 
 MAML models with keras models as estimators.
 
-### *static* _get_validation_data(val_features, val_targets, \*\*val_kwargs)
+### *static* \_get_validation_data(val_features, val_targets, \*\*val_kwargs)
 
 construct validation data, the default is just returning a list of
 val_features and val_targets.
 
 ### fit(features: list | np.ndarray, targets: list | np.ndarray | None = None, val_features: list | np.ndarray | None = None, val_targets: list | np.ndarray | None = None, \*\*kwargs)
 
-
 * **Parameters**
-
-    * **features** (*list*\* or \**np.ndarray*) – Numerical input feature list or
-numpy array with dim (m, n) where m is the number of data and
-n is the feature dimension.
-
-
-    * **targets** (*list*\* or \**np.ndarray*) – Numerical output target list, or
-numpy array with dim (m, ).
-
-
-    * **val_features** (*list*\* or \**np.ndarray*) – validation features
-
-
-    * **val_targets** (*list*\* or \**np.ndarray*) – validation targets.
-
-
+  * **features** (*list*\* or \**np.ndarray*) – Numerical input feature list or
+    numpy array with dim (m, n) where m is the number of data and
+    n is the feature dimension.
+  * **targets** (*list*\* or \**np.ndarray*) – Numerical output target list, or
+    numpy array with dim (m, ).
+  * **val_features** (*list*\* or \**np.ndarray*) – validation features
+  * **val_targets** (*list*\* or \**np.ndarray*) – validation targets.
 * **Returns**
-self
+  self
 
 ## *class* maml.base.SKLModel(model, describer: BaseDescriber | None = None, \*\*kwargs)
 
@@ -215,7 +174,7 @@ A thin wrapper of sklearn Pipeline.
 
 ### *abc_impl(* = <_abc.*abc_data object* )
 
-### steps(*: List[Any* )
+### steps(    *: List[Any* )
 
 ## *class* maml.base.TargetScalerMixin(\*args, \*\*kwargs)
 
@@ -235,22 +194,12 @@ Structure objects.
 
 Train the models from object, target pairs.
 
-
 * **Parameters**
-
-    * **objs** (*list*\* of \**objects*) – List of objects
-
-
-    * **targets** (*list*) – list of float or np.ndarray
-
-
-    * **val_objs** (*list*\* of \**objects*) – list of validation objects
-
-
-    * **val_targets** (*list*) – list of validation targets
-
-
-    * **\*\*kwargs** –
+  * **objs** (*list*\* of \**objects*) – List of objects
+  * **targets** (*list*) – list of float or np.ndarray
+  * **val_objs** (*list*\* of \**objects*) – list of validation objects
+  * **val_targets** (*list*) – list of validation targets
+  * **\*\*kwargs** –
 
 Returns: self
 
@@ -258,13 +207,10 @@ Returns: self
 
 Decorate to set describers class type.
 
-
 * **Parameters**
-**dtype** (*str*) – describers type, e.g., site, composition, structure etc.
-
-
+  **dtype** (*str*) – describers type, e.g., site, composition, structure etc.
 * **Returns**
-wrapped class
+  wrapped class
 
 ## maml.base.get_feature_batch(fb_name: str | Callable | None = None)
 
@@ -319,7 +265,7 @@ a list of DataFrame/numpy.ndarray.
 
 #### *abc_impl(* = <_abc.*abc_data object* )
 
-#### _is_multi_output()
+#### \_is_multi_output()
 
 #### *sklearn_auto_wrap_output_keys(* = {‘transform’_ )
 
@@ -336,13 +282,9 @@ the feature dimension, e.g., MLP models.
 
 Place holder for fit API.
 
-
 * **Parameters**
-
-    * **x** – Any inputs
-
-
-    * **y** – Any outputs
+  * **x** – Any inputs
+  * **y** – Any outputs
 
 Returns: self
 
@@ -351,13 +293,10 @@ Returns: self
 Transform a list of objs. If the return data is DataFrame,
 use df.xs(index, level=’input_index’) to get the result for the i-th object.
 
-
 * **Parameters**
-**objs** (*list*) – A list of objects.
-
-
+  **objs** (*list*) – A list of objects.
 * **Returns**
-One or a list of pandas data frame/numpy ndarray
+  One or a list of pandas data frame/numpy ndarray
 
 #### transform_one(obj: Any)
 
@@ -377,9 +316,8 @@ Dummy Describer that does nothing.
 
 Does nothing but return the original features.
 
-
 * **Parameters**
-**obj** – Any inputs
+  **obj** – Any inputs
 
 Returns: Any outputs
 
@@ -391,31 +329,25 @@ A thin wrapper of sklearn Pipeline.
 
 #### *abc_impl(* = <_abc.*abc_data object* )
 
-#### steps(*: List[Any* )
+#### steps(    *: List[Any* )
 
 ### maml.base._describer._transform_one(describer: BaseDescriber, obj: Any)
 
 A wrapper to make a pure function.
 
-
 * **Parameters**
-**describer** (*BaseDescriber*) – a describers
-
-
+  **describer** (*BaseDescriber*) – a describers
 * **Returns**
-np.ndarray
+  np.ndarray
 
 ### maml.base._describer.describer_type(dtype: str)
 
 Decorate to set describers class type.
 
-
 * **Parameters**
-**dtype** (*str*) – describers type, e.g., site, composition, structure etc.
-
-
+  **dtype** (*str*) – describers type, e.g., site, composition, structure etc.
 * **Returns**
-wrapped class
+  wrapped class
 
 ## maml.base._feature_batch module
 
@@ -483,22 +415,12 @@ Structure objects.
 
 Train the models from object, target pairs.
 
-
 * **Parameters**
-
-    * **objs** (*list*\* of \**objects*) – List of objects
-
-
-    * **targets** (*list*) – list of float or np.ndarray
-
-
-    * **val_objs** (*list*\* of \**objects*) – list of validation objects
-
-
-    * **val_targets** (*list*) – list of validation targets
-
-
-    * **\*\*kwargs** –
+  * **objs** (*list*\* of \**objects*) – List of objects
+  * **targets** (*list*) – list of float or np.ndarray
+  * **val_objs** (*list*\* of \**objects*) – list of validation objects
+  * **val_targets** (*list*) – list of validation targets
+  * **\*\*kwargs** –
 
 Returns: self
 
@@ -514,40 +436,27 @@ Abstract Base class for a Model. Basically, it usually wraps around a deep
 learning package, e.g., the Sequential Model in Keras, but provides for
 transparent conversion of arbitrary input and outputs.
 
-#### _predict(features: ndarray, \*\*kwargs)
+#### \_predict(features: ndarray, \*\*kwargs)
 
 Predict the values given a set of inputs based on fitted models.
 
-
 * **Parameters**
-**features** (*np.ndarray*) – array-like input features.
-
-
+  **features** (*np.ndarray*) – array-like input features.
 * **Returns**
-List of output objects.
+  List of output objects.
 
 #### fit(features: list | np.ndarray, targets: list | np.ndarray | None = None, val_features: list | np.ndarray | None = None, val_targets: list | np.ndarray | None = None, \*\*kwargs)
 
-
 * **Parameters**
-
-    * **features** (*list*\* or \**np.ndarray*) – Numerical input feature list or
-numpy array with dim (m, n) where m is the number of data and
-n is the feature dimension.
-
-
-    * **targets** (*list*\* or \**np.ndarray*) – Numerical output target list, or
-numpy array with dim (m, ).
-
-
-    * **val_features** (*list*\* or \**np.ndarray*) – validation features
-
-
-    * **val_targets** (*list*\* or \**np.ndarray*) – validation targets.
-
-
+  * **features** (*list*\* or \**np.ndarray*) – Numerical input feature list or
+    numpy array with dim (m, n) where m is the number of data and
+    n is the feature dimension.
+  * **targets** (*list*\* or \**np.ndarray*) – Numerical output target list, or
+    numpy array with dim (m, ).
+  * **val_features** (*list*\* or \**np.ndarray*) – validation features
+  * **val_targets** (*list*\* or \**np.ndarray*) – validation targets.
 * **Returns**
-self
+  self
 
 #### predict_objs(objs: list | np.ndarray)
 
@@ -561,22 +470,12 @@ Structure objects.
 
 Train the models from object, target pairs.
 
-
 * **Parameters**
-
-    * **objs** (*list*\* of \**objects*) – List of objects
-
-
-    * **targets** (*list*) – list of float or np.ndarray
-
-
-    * **val_objs** (*list*\* of \**objects*) – list of validation objects
-
-
-    * **val_targets** (*list*) – list of validation targets
-
-
-    * **\*\*kwargs** –
+  * **objs** (*list*\* of \**objects*) – List of objects
+  * **targets** (*list*) – list of float or np.ndarray
+  * **val_objs** (*list*\* of \**objects*) – list of validation objects
+  * **val_targets** (*list*) – list of validation targets
+  * **\*\*kwargs** –
 
 Returns: self
 
@@ -590,19 +489,11 @@ keras models mixin with save and load functionality.
 
 Evaluate objs, targets.
 
-
 * **Parameters**
-
-    * **eval_objs** (*list*) – objs for evaluation
-
-
-    * **eval_targets** (*list*) – target list for the corresponding objects
-
-
-    * **is_feature** (*bool*) – whether the input x is feature matrix
-
-
-    * **metric** (*callable*) – metric for evaluation
+  * **eval_objs** (*list*) – objs for evaluation
+  * **eval_targets** (*list*) – target list for the corresponding objects
+  * **is_feature** (*bool*) – whether the input x is feature matrix
+  * **metric** (*callable*) – metric for evaluation
 
 #### *classmethod* from_file(filename: str, \*\*kwargs)
 
@@ -617,13 +508,9 @@ Returns: object instance
 
 Get feature dimension/input_dim from describers or input_dim.
 
-
 * **Parameters**
-
-    * **describer** (*Describer*) – describers
-
-
-    * **input_dim** (*int*) – optional input dim int
+  * **describer** (*Describer*) – describers
+  * **input_dim** (*int*) – optional input dim int
 
 #### load(filename: str, custom_objects: list | None = None)
 
@@ -637,9 +524,8 @@ Returns: None
 
 Save the models and describers.
 
-
 * **Parameters**
-**filename** (*str*) – filename for save
+  **filename** (*str*) – filename for save
 
 ### *class* maml.base._model.KerasModel(model, describer: BaseDescriber | None = None, \*\*kwargs)
 
@@ -647,33 +533,23 @@ Bases: `BaseModel`, `KerasMixin`
 
 MAML models with keras models as estimators.
 
-#### *static* _get_validation_data(val_features, val_targets, \*\*val_kwargs)
+#### *static* \_get_validation_data(val_features, val_targets, \*\*val_kwargs)
 
 construct validation data, the default is just returning a list of
 val_features and val_targets.
 
 #### fit(features: list | np.ndarray, targets: list | np.ndarray | None = None, val_features: list | np.ndarray | None = None, val_targets: list | np.ndarray | None = None, \*\*kwargs)
 
-
 * **Parameters**
-
-    * **features** (*list*\* or \**np.ndarray*) – Numerical input feature list or
-numpy array with dim (m, n) where m is the number of data and
-n is the feature dimension.
-
-
-    * **targets** (*list*\* or \**np.ndarray*) – Numerical output target list, or
-numpy array with dim (m, ).
-
-
-    * **val_features** (*list*\* or \**np.ndarray*) – validation features
-
-
-    * **val_targets** (*list*\* or \**np.ndarray*) – validation targets.
-
-
+  * **features** (*list*\* or \**np.ndarray*) – Numerical input feature list or
+    numpy array with dim (m, n) where m is the number of data and
+    n is the feature dimension.
+  * **targets** (*list*\* or \**np.ndarray*) – Numerical output target list, or
+    numpy array with dim (m, ).
+  * **val_features** (*list*\* or \**np.ndarray*) – validation features
+  * **val_targets** (*list*\* or \**np.ndarray*) – validation targets.
 * **Returns**
-self
+  self
 
 ### *class* maml.base._model.SKLModel(model, describer: BaseDescriber | None = None, \*\*kwargs)
 
@@ -691,19 +567,11 @@ Sklearn models save and load functionality.
 
 Evaluate objs, targets.
 
-
 * **Parameters**
-
-    * **eval_objs** (*list*) – objs for evaluation
-
-
-    * **eval_targets** (*list*) – target list for the corresponding objects
-
-
-    * **is_feature** (*bool*) – whether the input x is feature matrix
-
-
-    * **metric** (*callable*) – metric for evaluation
+  * **eval_objs** (*list*) – objs for evaluation
+  * **eval_targets** (*list*) – target list for the corresponding objects
+  * **is_feature** (*bool*) – whether the input x is feature matrix
+  * **metric** (*callable*) – metric for evaluation
 
 #### *classmethod* from_file(filename: str, \*\*kwargs)
 
@@ -726,9 +594,8 @@ Returns: None
 
 Save the models and describers.
 
-
 * **Parameters**
-**filename** (*str*) – filename for save
+  **filename** (*str*) – filename for save
 
 ### maml.base._model.is_keras_model(model: BaseModel)
 

@@ -3,6 +3,7 @@ from __future__ import annotations
 import unittest
 
 import numpy as np
+import pytest
 
 from maml.apps.bowsr.preprocessing import DummyScaler, StandardScaler
 
@@ -72,6 +73,34 @@ class ScalerTest(unittest.TestCase):
         target2 = scaler2.inverse_transform(self.target)
         assert np.all(abs(transformed_target2 - self.target) < 0.0001)
         assert np.all(abs(target2 - self.target) < 0.0001)
+
+
+def test_scaler_repr():
+    assert repr(DummyScaler()) == "DummyScaler"
+    assert repr(StandardScaler(mean=1.0, std=2.0)) == "StandardScaler(mean=1.0, std=2.0)"
+
+
+@pytest.mark.parametrize(
+    ("mean", "std"),
+    [(None, None), ([0.0, 1.0], [1.0, 2.0]), (np.array([0.0, 1.0]), np.array([1.0, 2.0]))],
+)
+def test_standard_scaler_as_dict_roundtrip(mean, std):
+    """Regression: as_dict raised AttributeError for an unfitted scaler or list parameters."""
+    scaler = StandardScaler(mean=mean, std=std)
+    d = scaler.as_dict()
+    assert d["params"] == {
+        "mean": None if mean is None else list(mean),
+        "std": None if std is None else list(std),
+    }
+    restored = StandardScaler.from_dict(d)
+    if mean is None:
+        assert restored.mean is None
+        assert restored.std is None
+        with pytest.raises(ValueError, match="No parameters"):
+            restored.transform(np.zeros((1, 2)))
+    else:
+        x = np.array([[1.0, 3.0]])
+        assert np.allclose(restored.transform(x), scaler.transform(x))
 
 
 if __name__ == "__main__":

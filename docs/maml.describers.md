@@ -20,11 +20,9 @@ Reference:
 @article{behler2007generalized,
 
 > title={Generalized neural-network representation of
-
 > ```none
 > high-dimensional potential-energy surfaces},
 > ```
-
 > author={Behler, J{“o}rg and Parrinello, Michele},
 > journal={Physical review letters},
 > volume={98},
@@ -35,13 +33,12 @@ Reference:
 
 ### *abc_impl(* = <_abc.*abc_data object* )
 
-### _fc(r: float)
+### \_fc(r: float)
 
 Cutoff function to decay the symmetry functions at vicinity of radial cutoff.
 
-
 * **Parameters**
-**r** (*float*) – The pair distance.
+  **r** (*float*) – The pair distance.
 
 ### *sklearn_auto_wrap_output_keys(* = {‘transform’_ )
 
@@ -49,9 +46,8 @@ Cutoff function to decay the symmetry functions at vicinity of radial cutoff.
 
 ### transform_one(structure: Structure)
 
-
 * **Parameters**
-**structure** (*Structure*) – Pymatgen Structure object.
+  **structure** (*Structure*) – Pymatgen Structure object.
 
 ## *class* maml.describers.BispectrumCoefficients(rcutfac: float, twojmax: int, element_profile: dict, quadratic: bool = False, pot_fit: bool = False, include_stress: bool = False, feature_batch: str = ‘pandas_concat’, \*\*kwargs)
 
@@ -64,17 +60,13 @@ Reference:
 @article{bartok2010gaussian,
 
 > title={Gaussian approximation potentials: The
-
 > ```none
 > accuracy of quantum mechanics, without the electrons},
 > ```
-
 > author={Bart{‘o}k, Albert P and Payne, Mike C
-
 > ```none
 > and Kondor, Risi and Cs{'a}nyi, G{'a}bor},
 > ```
-
 > journal={Physical review letters},
 > volume={104}, number={13}, pages={136403}, year={2010}, publisher={APS}}
 
@@ -84,20 +76,19 @@ Reference:
 
 ### describer_type(_ = ‘site_ )
 
-### *property* feature_dim(*: int | Non* )
+### *property* feature_dim(    *: int | Non* )
 
 Bispectrum feature dimension.
 
-### *property* subscripts(*: lis* )
+### *property* subscripts(    *: lis* )
 
 The subscripts (2j1, 2j2, 2j) of all bispectrum components
 involved.
 
 ### transform_one(structure: Structure)
 
-
 * **Parameters**
-**structure** (*Structure*) – Pymatgen Structure object.
+  **structure** (*Structure*) – Pymatgen Structure object.
 
 ## *class* maml.describers.CoulombEigenSpectrum(max_atoms: int | None = None, \*\*kwargs)
 
@@ -109,17 +100,13 @@ Reference:
 @article{rupp2012fast,
 
 > title={Fast and accurate modeling of molecular
-
 > ```none
 > atomization energies with machine learning},
 > ```
-
 > author={Rupp, Matthias and Tkatchenko, Alexandre and M{“u}ller,
-
 > ```none
 > Klaus-Robert and Von Lilienfeld, O Anatole},
 > ```
-
 > journal={Physical review letters}, volume={108},
 > number={5}, pages={058301},
 > year={2012}, publisher={APS}}
@@ -132,9 +119,8 @@ Reference:
 
 ### transform_one(mol: Molecule)
 
-
 * **Parameters**
-**mol** (*Molecule*) – pymatgen molecule.
+  **mol** (*Molecule*) – pymatgen molecule.
 
 Returns: np.ndarray the eigen value vectors of Coulob matrix
 
@@ -148,33 +134,26 @@ Reference:
 @article{rupp2012fast,
 
 > title={Fast and accurate modeling of molecular
-
 > ```none
 > atomization energies with machine learning},
 > ```
-
 > author={Rupp, Matthias and Tkatchenko, Alexandre and M{“u}ller,
-
 > ```none
 > Klaus-Robert and Von Lilienfeld, O Anatole},
 > ```
-
 > journal={Physical review letters}, volume={108},
 > number={5}, pages={058301},
 > year={2012}, publisher={APS}}
 
 ### *abc_impl(* = <_abc.*abc_data object* )
 
-### *static* _get_columb_mat(s: Molecule | Structure)
-
+### *static* \_get_columb_mat(s: Molecule | Structure)
 
 * **Parameters**
-**s** (*Molecule/Structure*) – input Molecule or Structure. Structure
-is not advised since the feature will depend on the supercell size.
-
-
+  **s** (*Molecule/Structure*) – input Molecule or Structure. Structure
+  is not advised since the feature will depend on the supercell size.
 * **Returns**
-Coulomb matrix of the structure
+  Coulomb matrix of the structure
 
 ### *sklearn_auto_wrap_output_keys(* = {‘transform’_ )
 
@@ -182,27 +161,21 @@ Coulomb matrix of the structure
 
 ### get_coulomb_mat(s: Molecule | Structure)
 
-
 * **Parameters**
-**s** (*Molecule/Structure*) – input Molecule or Structure. Structure
-is not advised since the feature will depend on the supercell size
-
-
+  **s** (*Molecule/Structure*) – input Molecule or Structure. Structure
+  is not advised since the feature will depend on the supercell size
 * **Returns**
-Coulomb matrix of the structure.
+  Coulomb matrix of the structure.
 
 ### transform_one(s: Molecule | Structure)
 
-
 * **Parameters**
-**s** (*Molecule/Structure*) – pymatgen Molecule or Structure, Structure is not
-advised since the features will depend on supercell size.
-
-
+  **s** (*Molecule/Structure*) – pymatgen Molecule or Structure, Structure is not
+  advised since the features will depend on supercell size.
 * **Returns**
-pandas.DataFrame.
-The column is index of the structure, which is 0 for single input
-df[0] returns the serials of coulomb_mat raval
+  pandas.DataFrame.
+  The column is index of the structure, which is 0 for single input
+  df[0] returns the serials of coulomb_mat raval
 
 ## *class* maml.describers.DistinctSiteProperty(properties: list[str], symprec: float = 0.1, wyckoffs: list[str] | None = None, feature_batch: str = ‘pandas_concat’, \*\*kwargs)
 
@@ -217,15 +190,13 @@ Reference:
 
 > title={Deep neural networks for accurate predictions of crystal stability},
 > author={Ye, Weike and Chen, Chi and Wang, Zhenbin and
-
 > > Chu, Iek-Heng and Ong, Shyue Ping},
-
-> journal={Nature communications},
-> volume={9},
-> number={1},
-> pages={1–6},
-> year={2018},
-> publisher={Nature Publishing Group}}
+> > journal={Nature communications},
+> > volume={9},
+> > number={1},
+> > pages={1–6},
+> > year={2018},
+> > publisher={Nature Publishing Group}}
 
 ### *abc_impl(* = <_abc.*abc_data object* )
 
@@ -237,13 +208,10 @@ Reference:
 
 ### transform_one(structure: Structure)
 
-
 * **Parameters**
-**structure** (*pymatgen Structure*) – pymatgen structure for descriptor computation.
-
-
+  **structure** (*pymatgen Structure*) – pymatgen structure for descriptor computation.
 * **Returns**
-pd.DataFrame that contains the distinct position labeled features
+  pd.DataFrame that contains the distinct position labeled features
 
 ## *class* maml.describers.ElementProperty(\*args, \*\*kwargs)
 
@@ -267,24 +235,18 @@ list of all attributes available for a given data_source, see the
 documentation for the data sources (e.g., PymatgenData, MagpieData,
 MatscholarElementData, etc.).
 
-
 * **Parameters**
-
-    * **data_source** (*AbstractData*\* or \**str*) – source from which to retrieve
-element property data (or use str for preset: “pymatgen”,
-“magpie”, or “deml”)
-
-
-    * **features** (*list*\* of \**strings*) – List of elemental properties to use
-(these must be supported by data_source)
-
-
-    * **stats** (*list*\* of \**strings*) – a list of weighted statistics to compute to for each
-property (see PropertyStats for available stats)
+  * **data_source** (*AbstractData*\* or \**str*) – source from which to retrieve
+    element property data (or use str for preset: “pymatgen”,
+    “magpie”, or “deml”)
+  * **features** (*list*\* of \**strings*) – List of elemental properties to use
+    (these must be supported by data_source)
+  * **stats** (*list*\* of \**strings*) – a list of weighted statistics to compute to for each
+    property (see PropertyStats for available stats)
 
 ### *abc_impl(* = <_abc.*abc_data object* )
 
-### *classmethod* _get_param_names()
+### *classmethod* \_get_param_names()
 
 Get parameter names for the estimator
 
@@ -300,18 +262,13 @@ Wrap matminer_wrapper’s from_preset function.
 
 Get parameters for this estimator.
 
-
 * **Parameters**
-**deep** (*bool*\*, \**default=True*) – If True, will return the parameters for this estimator and
-contained subobjects that are estimators.
-
-
+  **deep** (*bool*\*, \**default=True*) – If True, will return the parameters for this estimator and
+  contained subobjects that are estimators.
 * **Returns**
-**params** – Parameter names mapped to their values.
-
-
+  **params** – Parameter names mapped to their values.
 * **Return type**
-dict
+  dict
 
 ### transform_one(obj: Any)
 
@@ -331,27 +288,17 @@ are separated by ::, e.g., moment::1::None.
 
 ### *abc_impl(* = <_abc.*abc_data object* )
 
-### *static* _reduce_dimension(element_properties, property_names, num_dim: int | None = None, reduction_algo: str | None = ‘pca’, reduction_params: dict | None = None)
+### *static* \_reduce_dimension(element_properties, property_names, num_dim: int | None = None, reduction_algo: str | None = ‘pca’, reduction_params: dict | None = None)
 
 Reduce the feature dimension by reduction_algo.
 
-
 * **Parameters**
-
-    * **element_properties** (*dict*) – dictionary of elemental/specie propeprties
-
-
-    * **property_names** (*list*) – list of property names
-
-
-    * **num_dim** (*int*) – number of dimension to keep
-
-
-    * **reduction_algo** (*str*) – algorithm for dimensional reduction, currently support
-pca, kpca
-
-
-    * **reduction_params** (*dict*) – kwargs for reduction algorithm
+  * **element_properties** (*dict*) – dictionary of elemental/specie propeprties
+  * **property_names** (*list*) – list of property names
+  * **num_dim** (*int*) – number of dimension to keep
+  * **reduction_algo** (*str*) – algorithm for dimensional reduction, currently support
+    pca, kpca
+  * **reduction_params** (*dict*) – kwargs for reduction algorithm
 
 Returns: new element_properties and property_names
 
@@ -363,18 +310,12 @@ Returns: new element_properties and property_names
 
 ElementalStats from existing data file.
 
-
 * **Parameters**
-
-    * **data_name** (*str*\* of **list** of \**str*) – data name. Current supported data are
-available from ElementStats.AVAILABLE_DATA
-
-
-    * **stats** (*list*) – list of stats, use ElementStats.ALLOWED_STATS to
-check available stats
-
-
-    * **\*\*kwargs** – Passthrough to class init.
+  * **data_name** (*str*\* of **list** of \**str*) – data name. Current supported data are
+    available from ElementStats.AVAILABLE_DATA
+  * **stats** (*list*) – list of stats, use ElementStats.ALLOWED_STATS to
+    check available stats
+  * **\*\*kwargs** – Passthrough to class init.
 
 Returns: ElementStats instance
 
@@ -386,21 +327,14 @@ The keys required are:
 
 > element_properties
 > property_names
-
-
 * **Parameters**
-
-    * **filename** (*str*) – filename
-
-
-    * **stats** (*list*) – list of stats, check ElementStats.ALLOWED_STATS
-for supported stats. The stats that support additional
-Keyword args, use ‘:’ to separate the args. For example,
-‘moment:0:None’ will calculate moment stats with order=0,
-and max_order=None.
-
-
-    * **\*\*kwargs** – Passthrough to class init.
+  * **filename** (*str*) – filename
+  * **stats** (*list*) – list of stats, check ElementStats.ALLOWED_STATS
+    for supported stats. The stats that support additional
+    Keyword args, use ‘:’ to separate the args. For example,
+    ‘moment:0:None’ will calculate moment stats with order=0,
+    and max_order=None.
+  * **\*\*kwargs** – Passthrough to class init.
 
 Returns: ElementStats class
 
@@ -408,9 +342,8 @@ Returns: ElementStats class
 
 Transform one object, the object can be string, Compostion or Structure.
 
-
 * **Parameters**
-**obj** (*str/Composition/Structure*) – object to transform
+  **obj** (*str/Composition/Structure*) – object to transform
 
 Returns: pd.DataFrame with property names as column names
 
@@ -440,13 +373,10 @@ Reference:
 @article{chen2019graph,title={Graph networks as a universal machine
 
 > > learning framework for molecules and crystals},
-
-> author={Chen, Chi and Ye, Weike and Zuo, Yunxing and
-
+> > author={Chen, Chi and Ye, Weike and Zuo, Yunxing and
 > ```none
 > Zheng, Chen and Ong, Shyue Ping},
 > ```
-
 > journal={Chemistry of Materials}, volume={31}, number={9},
 > pages={3564–3572}, year={2019},publisher={ACS Publications}}
 
@@ -460,9 +390,8 @@ Reference:
 
 Get megnet site features from structure object.
 
-
 * **Parameters**
-**obj** (*structure*\* or \**molecule*) – pymatgen structure or molecules
+  **obj** (*structure*\* or \**molecule*) – pymatgen structure or molecules
 
 Returns:
 
@@ -489,13 +418,10 @@ Reference:
 @article{chen2019graph,title={Graph networks as a universal machine
 
 > > learning framework for molecules and crystals},
-
-> author={Chen, Chi and Ye, Weike and Zuo, Yunxing and
-
+> > author={Chen, Chi and Ye, Weike and Zuo, Yunxing and
 > ```none
 > Zheng, Chen and Ong, Shyue Ping},
 > ```
-
 > journal={Chemistry of Materials}, volume={31}, number={9},
 > pages={3564–3572}, year={2019},publisher={ACS Publications}}
 
@@ -519,7 +445,7 @@ Bases: `object`
 
 Calculator for radial distribution function.
 
-### *static* _get_specie_density(structure: Structure)
+### *static* \_get_specie_density(structure: Structure)
 
 ### get_site_coordination(structure: Structure)
 
@@ -531,15 +457,12 @@ Returns: r, cns where cns is a list of dictionary with specie_pair: pair_cn key:
 
 ### get_site_rdf(structure: Structure)
 
-
 * **Parameters**
-**structure** (*Structure*) – pymatgen structure
-
-
+  **structure** (*Structure*) – pymatgen structure
 * **Returns**
-r, rdfs, r is the radial points, and rdfs are a list of rdf dicts
-rdfs[0] is the rdfs of the first site. It is a dictionary of {atom_pair: pair_rdf}
-e.g.,
+  r, rdfs, r is the radial points, and rdfs are a list of rdf dicts
+  rdfs[0] is the rdfs of the first site. It is a dictionary of {atom_pair: pair_rdf}
+  e.g.,
 
 > {“Sr:O”: [0, 0, 0.1, 0.2, ..]}.
 
@@ -551,11 +474,9 @@ Get specie-wise coordination number
 :param ref_species: the reference species.
 
 > The rdfs are calculated with these species at the center
-
-
 * **Parameters**
-**species** (*list*\* of **species** or \**just single specie str*) – the species that we are interested in.
-The rdfs are calculated on these species.
+  **species** (*list*\* of **species** or \**just single specie str*) – the species that we are interested in.
+  The rdfs are calculated on these species.
 
 Returns:
 
@@ -567,11 +488,9 @@ Get specie-wise rdf
 :param ref_species: the reference species.
 
 > The rdfs are calculated with these species at the center
-
-
 * **Parameters**
-**species** (*list*\* of **species** or \**just single specie str*) – the species that we are interested in.
-The rdfs are calculated on these species.
+  **species** (*list*\* of **species** or \**just single specie str*) – the species that we are interested in.
+  The rdfs are calculated on these species.
 
 Returns:
 
@@ -585,19 +504,15 @@ Reference:
 @article{montavon2013machine,
 
 > title={Machine learning of molecular electronic properties
-
 > ```none
 > in chemical compound space},
 > ```
-
 > author={Montavon, Gr{‘e}goire and Rupp, Matthias and Gobre,
-
 > ```none
 > Vivekanand and Vazquez-Mayagoitia, Alvaro and Hansen, Katja
 > and Tkatchenko, Alexandre and M{"u}ller, Klaus-Robert and
 > Von Lilienfeld, O Anatole},
 > ```
-
 > journal={New Journal of Physics},
 > volume={15}, number={9},pages={095003},
 > year={2013},publisher={IOP Publishing}}
@@ -616,20 +531,14 @@ Returns the randomized matrix
 (iii) draw a zero-mean unit-variance noise vector ε of the same
 
 > size as row_norms.
-
-
 1. permute the rows and columns of C with the same permutation
 
 > that sorts row_norms + ε.
-
-
 * **Parameters**
-**s** (*Molecule/Structure*) – pymatgen Molecule or Structure, Structure is not
-advised since the features will depend on supercell size
-
-
+  **s** (*Molecule/Structure*) – pymatgen Molecule or Structure, Structure is not
+  advised since the features will depend on supercell size
 * **Returns**
-pd.DataFrame randomized Coulomb matrix
+  pd.DataFrame randomized Coulomb matrix
 
 ### transform_one(s: Molecule | Structure)
 
@@ -649,7 +558,7 @@ an unordered set of site specie properties.
 
 ### *abc_impl(* = <_abc.*abc_data object* )
 
-### *static* _get_keys(c: Composition)
+### *static* \_get_keys(c: Composition)
 
 ### *sklearn_auto_wrap_output_keys(* = {‘transform’_ )
 
@@ -663,13 +572,10 @@ Feature dimension.
 
 Transform one object to features.
 
-
 * **Parameters**
-**obj** (*str/Composition/Structure/Molecule*) – object to transform
-
-
+  **obj** (*str/Composition/Structure/Molecule*) – object to transform
 * **Returns**
-features array
+  features array
 
 ## *class* maml.describers.SmoothOverlapAtomicPosition(cutoff: float, l_max: int = 8, n_max: int = 8, atom_sigma: float = 0.5, feature_batch: str = ‘pandas_concat’, \*\*kwargs)
 
@@ -694,9 +600,8 @@ Reference:
 
 ### transform_one(structure: Structure)
 
-
 * **Parameters**
-**structure** (*Structure*) – Pymatgen Structure object.
+  **structure** (*Structure*) – Pymatgen Structure object.
 
 ## *class* maml.describers.SortedCoulombMatrix(random_seed: int | None = None, is_ravel: bool = True, \*\*kwargs)
 
@@ -708,19 +613,15 @@ Reference:
 @inproceedings{montavon2012learning,
 
 > title={Learning invariant representations
-
 > ```none
 > of molecules for atomization energy prediction},
 > ```
-
 > author={Montavon, Gr{‘e}goire and Hansen, Katja
-
 > ```none
 > and Fazli, Siamac and Rupp, Matthias and Biegler,
 > Franziska and Ziehe, Andreas and Tkatchenko, Alexandre
 > and Lilienfeld, Anatole V and M{"u}ller, Klaus-Robert},
 > ```
-
 > booktitle={Advances in neural information processing systems},
 > pages={440–448}, year={2012}}
 
@@ -734,14 +635,11 @@ Reference:
 
 Returns the matrix sorted by the row norm.
 
-
 * **Parameters**
-**s** (*Molecule/Structure*) – pymatgen Molecule or Structure, Structure is not
-advised since the features will depend on supercell size
-
-
+  **s** (*Molecule/Structure*) – pymatgen Molecule or Structure, Structure is not
+  advised since the features will depend on supercell size
 * **Returns**
-pd.DataFrame, sorted Coulomb matrix
+  pd.DataFrame, sorted Coulomb matrix
 
 ### transform_one(s: Molecule | Structure)
 
@@ -756,20 +654,12 @@ Returns: pd.DataFrame descriptors
 
 Wrapper of matminer_wrapper describers.
 
-
 * **Parameters**
-
-    * **cls_name** (*str*) – new class name
-
-
-    * **wrapped_class** (*class object*) – matminer_wrapper BaseFeaturizer
-
-
-    * **obj_conversion** (*callable*) – function to convert objects into desired
-object type within transform_one
-
-
-    * **describer_type** (*object*) – object type.
+  * **cls_name** (*str*) – new class name
+  * **wrapped_class** (*class object*) – matminer_wrapper BaseFeaturizer
+  * **obj_conversion** (*callable*) – function to convert objects into desired
+    object type within transform_one
+  * **describer_type** (*object*) – object type.
 
 Returns: maml describers class
 
@@ -791,27 +681,17 @@ are separated by ::, e.g., moment::1::None.
 
 #### *abc_impl(* = <_abc.*abc_data object* )
 
-#### *static* _reduce_dimension(element_properties, property_names, num_dim: int | None = None, reduction_algo: str | None = ‘pca’, reduction_params: dict | None = None)
+#### *static* \_reduce_dimension(element_properties, property_names, num_dim: int | None = None, reduction_algo: str | None = ‘pca’, reduction_params: dict | None = None)
 
 Reduce the feature dimension by reduction_algo.
 
-
 * **Parameters**
-
-    * **element_properties** (*dict*) – dictionary of elemental/specie propeprties
-
-
-    * **property_names** (*list*) – list of property names
-
-
-    * **num_dim** (*int*) – number of dimension to keep
-
-
-    * **reduction_algo** (*str*) – algorithm for dimensional reduction, currently support
-pca, kpca
-
-
-    * **reduction_params** (*dict*) – kwargs for reduction algorithm
+  * **element_properties** (*dict*) – dictionary of elemental/specie propeprties
+  * **property_names** (*list*) – list of property names
+  * **num_dim** (*int*) – number of dimension to keep
+  * **reduction_algo** (*str*) – algorithm for dimensional reduction, currently support
+    pca, kpca
+  * **reduction_params** (*dict*) – kwargs for reduction algorithm
 
 Returns: new element_properties and property_names
 
@@ -823,18 +703,12 @@ Returns: new element_properties and property_names
 
 ElementalStats from existing data file.
 
-
 * **Parameters**
-
-    * **data_name** (*str*\* of **list** of \**str*) – data name. Current supported data are
-available from ElementStats.AVAILABLE_DATA
-
-
-    * **stats** (*list*) – list of stats, use ElementStats.ALLOWED_STATS to
-check available stats
-
-
-    * **\*\*kwargs** – Passthrough to class init.
+  * **data_name** (*str*\* of **list** of \**str*) – data name. Current supported data are
+    available from ElementStats.AVAILABLE_DATA
+  * **stats** (*list*) – list of stats, use ElementStats.ALLOWED_STATS to
+    check available stats
+  * **\*\*kwargs** – Passthrough to class init.
 
 Returns: ElementStats instance
 
@@ -846,21 +720,14 @@ The keys required are:
 
 > element_properties
 > property_names
-
-
 * **Parameters**
-
-    * **filename** (*str*) – filename
-
-
-    * **stats** (*list*) – list of stats, check ElementStats.ALLOWED_STATS
-for supported stats. The stats that support additional
-Keyword args, use ‘:’ to separate the args. For example,
-‘moment:0:None’ will calculate moment stats with order=0,
-and max_order=None.
-
-
-    * **\*\*kwargs** – Passthrough to class init.
+  * **filename** (*str*) – filename
+  * **stats** (*list*) – list of stats, check ElementStats.ALLOWED_STATS
+    for supported stats. The stats that support additional
+    Keyword args, use ‘:’ to separate the args. For example,
+    ‘moment:0:None’ will calculate moment stats with order=0,
+    and max_order=None.
+  * **\*\*kwargs** – Passthrough to class init.
 
 Returns: ElementStats class
 
@@ -868,9 +735,8 @@ Returns: ElementStats class
 
 Transform one object, the object can be string, Compostion or Structure.
 
-
 * **Parameters**
-**obj** (*str/Composition/Structure*) – object to transform
+  **obj** (*str/Composition/Structure*) – object to transform
 
 Returns: pd.DataFrame with property names as column names
 
@@ -904,20 +770,12 @@ Wrapper for matminer_wrapper featurizers.
 
 Wrapper of matminer_wrapper describers.
 
-
 * **Parameters**
-
-    * **cls_name** (*str*) – new class name
-
-
-    * **wrapped_class** (*class object*) – matminer_wrapper BaseFeaturizer
-
-
-    * **obj_conversion** (*callable*) – function to convert objects into desired
-object type within transform_one
-
-
-    * **describer_type** (*object*) – object type.
+  * **cls_name** (*str*) – new class name
+  * **wrapped_class** (*class object*) – matminer_wrapper BaseFeaturizer
+  * **obj_conversion** (*callable*) – function to convert objects into desired
+    object type within transform_one
+  * **describer_type** (*object*) – object type.
 
 Returns: maml describers class
 
@@ -941,13 +799,10 @@ Reference:
 @article{chen2019graph,title={Graph networks as a universal machine
 
 > > learning framework for molecules and crystals},
-
-> author={Chen, Chi and Ye, Weike and Zuo, Yunxing and
-
+> > author={Chen, Chi and Ye, Weike and Zuo, Yunxing and
 > ```none
 > Zheng, Chen and Ong, Shyue Ping},
 > ```
-
 > journal={Chemistry of Materials}, volume={31}, number={9},
 > pages={3564–3572}, year={2019},publisher={ACS Publications}}
 
@@ -961,9 +816,8 @@ Reference:
 
 Get megnet site features from structure object.
 
-
 * **Parameters**
-**obj** (*structure*\* or \**molecule*) – pymatgen structure or molecules
+  **obj** (*structure*\* or \**molecule*) – pymatgen structure or molecules
 
 Returns:
 
@@ -990,13 +844,10 @@ Reference:
 @article{chen2019graph,title={Graph networks as a universal machine
 
 > > learning framework for molecules and crystals},
-
-> author={Chen, Chi and Ye, Weike and Zuo, Yunxing and
-
+> > author={Chen, Chi and Ye, Weike and Zuo, Yunxing and
 > ```none
 > Zheng, Chen and Ong, Shyue Ping},
 > ```
-
 > journal={Chemistry of Materials}, volume={31}, number={9},
 > pages={3564–3572}, year={2019},publisher={ACS Publications}}
 
@@ -1027,7 +878,7 @@ Bases: `object`
 
 Calculator for radial distribution function.
 
-#### *static* _get_specie_density(structure: Structure)
+#### *static* \_get_specie_density(structure: Structure)
 
 #### get_site_coordination(structure: Structure)
 
@@ -1039,15 +890,12 @@ Returns: r, cns where cns is a list of dictionary with specie_pair: pair_cn key:
 
 #### get_site_rdf(structure: Structure)
 
-
 * **Parameters**
-**structure** (*Structure*) – pymatgen structure
-
-
+  **structure** (*Structure*) – pymatgen structure
 * **Returns**
-r, rdfs, r is the radial points, and rdfs are a list of rdf dicts
-rdfs[0] is the rdfs of the first site. It is a dictionary of {atom_pair: pair_rdf}
-e.g.,
+  r, rdfs, r is the radial points, and rdfs are a list of rdf dicts
+  rdfs[0] is the rdfs of the first site. It is a dictionary of {atom_pair: pair_rdf}
+  e.g.,
 
 > {“Sr:O”: [0, 0, 0.1, 0.2, ..]}.
 
@@ -1059,11 +907,9 @@ Get specie-wise coordination number
 :param ref_species: the reference species.
 
 > The rdfs are calculated with these species at the center
-
-
 * **Parameters**
-**species** (*list*\* of **species** or \**just single specie str*) – the species that we are interested in.
-The rdfs are calculated on these species.
+  **species** (*list*\* of **species** or \**just single specie str*) – the species that we are interested in.
+  The rdfs are calculated on these species.
 
 Returns:
 
@@ -1075,11 +921,9 @@ Get specie-wise rdf
 :param ref_species: the reference species.
 
 > The rdfs are calculated with these species at the center
-
-
 * **Parameters**
-**species** (*list*\* of **species** or \**just single specie str*) – the species that we are interested in.
-The rdfs are calculated on these species.
+  **species** (*list*\* of **species** or \**just single specie str*) – the species that we are interested in.
+  The rdfs are calculated on these species.
 
 Returns:
 
@@ -1093,9 +937,8 @@ Convert a distance array for counts in the bin
 :param r_max: maximum radius
 :type r_max: float
 
-
 * **Returns**
-1D array of counts in the bins centered on grid.
+  1D array of counts in the bins centered on grid.
 
 ### maml.describers._rdf.get_pair_distances(structure: Structure, r_max: float = 8.0)
 
@@ -1108,13 +951,9 @@ The output will be a list of of dictionary, for example
 it will be fairly easy to construct radial distribution func, etc
 from here.
 
-
 * **Parameters**
-
-    * **structure** (*Structure*) – pymatgen Structure
-
-
-    * **r_max** (*float*) – maximum radius to consider
+  * **structure** (*Structure*) – pymatgen Structure
+  * **r_max** (*float*) – maximum radius to consider
 
 Returns:
 
@@ -1133,11 +972,9 @@ Reference:
 @article{behler2007generalized,
 
 > title={Generalized neural-network representation of
-
 > ```none
 > high-dimensional potential-energy surfaces},
 > ```
-
 > author={Behler, J{“o}rg and Parrinello, Michele},
 > journal={Physical review letters},
 > volume={98},
@@ -1148,13 +985,12 @@ Reference:
 
 #### *abc_impl(* = <_abc.*abc_data object* )
 
-#### _fc(r: float)
+#### \_fc(r: float)
 
 Cutoff function to decay the symmetry functions at vicinity of radial cutoff.
 
-
 * **Parameters**
-**r** (*float*) – The pair distance.
+  **r** (*float*) – The pair distance.
 
 #### *sklearn_auto_wrap_output_keys(* = {‘transform’_ )
 
@@ -1162,9 +998,8 @@ Cutoff function to decay the symmetry functions at vicinity of radial cutoff.
 
 #### transform_one(structure: Structure)
 
-
 * **Parameters**
-**structure** (*Structure*) – Pymatgen Structure object.
+  **structure** (*Structure*) – Pymatgen Structure object.
 
 ### *class* maml.describers._site.BispectrumCoefficients(rcutfac: float, twojmax: int, element_profile: dict, quadratic: bool = False, pot_fit: bool = False, include_stress: bool = False, feature_batch: str = ‘pandas_concat’, \*\*kwargs)
 
@@ -1177,17 +1012,13 @@ Reference:
 @article{bartok2010gaussian,
 
 > title={Gaussian approximation potentials: The
-
 > ```none
 > accuracy of quantum mechanics, without the electrons},
 > ```
-
 > author={Bart{‘o}k, Albert P and Payne, Mike C
-
 > ```none
 > and Kondor, Risi and Cs{'a}nyi, G{'a}bor},
 > ```
-
 > journal={Physical review letters},
 > volume={104}, number={13}, pages={136403}, year={2010}, publisher={APS}}
 
@@ -1197,20 +1028,19 @@ Reference:
 
 #### describer_type(_ = ‘site_ )
 
-#### *property* feature_dim(*: int | Non* )
+#### *property* feature_dim(    *: int | Non* )
 
 Bispectrum feature dimension.
 
-#### *property* subscripts(*: lis* )
+#### *property* subscripts(    *: lis* )
 
 The subscripts (2j1, 2j2, 2j) of all bispectrum components
 involved.
 
 #### transform_one(structure: Structure)
 
-
 * **Parameters**
-**structure** (*Structure*) – Pymatgen Structure object.
+  **structure** (*Structure*) – Pymatgen Structure object.
 
 ### *class* maml.describers._site.MEGNetSite(name: str | object | None = None, level: int | None = None, \*\*kwargs)
 
@@ -1222,13 +1052,10 @@ Reference:
 @article{chen2019graph,title={Graph networks as a universal machine
 
 > > learning framework for molecules and crystals},
-
-> author={Chen, Chi and Ye, Weike and Zuo, Yunxing and
-
+> > author={Chen, Chi and Ye, Weike and Zuo, Yunxing and
 > ```none
 > Zheng, Chen and Ong, Shyue Ping},
 > ```
-
 > journal={Chemistry of Materials}, volume={31}, number={9},
 > pages={3564–3572}, year={2019},publisher={ACS Publications}}
 
@@ -1242,9 +1069,8 @@ Reference:
 
 Get megnet site features from structure object.
 
-
 * **Parameters**
-**obj** (*structure*\* or \**molecule*) – pymatgen structure or molecules
+  **obj** (*structure*\* or \**molecule*) – pymatgen structure or molecules
 
 Returns:
 
@@ -1257,7 +1083,7 @@ an unordered set of site specie properties.
 
 #### *abc_impl(* = <_abc.*abc_data object* )
 
-#### *static* _get_keys(c: Composition)
+#### *static* \_get_keys(c: Composition)
 
 #### *sklearn_auto_wrap_output_keys(* = {‘transform’_ )
 
@@ -1271,13 +1097,10 @@ Feature dimension.
 
 Transform one object to features.
 
-
 * **Parameters**
-**obj** (*str/Composition/Structure/Molecule*) – object to transform
-
-
+  **obj** (*str/Composition/Structure/Molecule*) – object to transform
 * **Returns**
-features array
+  features array
 
 ### *class* maml.describers._site.SmoothOverlapAtomicPosition(cutoff: float, l_max: int = 8, n_max: int = 8, atom_sigma: float = 0.5, feature_batch: str = ‘pandas_concat’, \*\*kwargs)
 
@@ -1302,9 +1125,8 @@ Reference:
 
 #### transform_one(structure: Structure)
 
-
 * **Parameters**
-**structure** (*Structure*) – Pymatgen Structure object.
+  **structure** (*Structure*) – Pymatgen Structure object.
 
 ## maml.describers._spectrum module
 
@@ -1324,17 +1146,13 @@ Reference:
 @article{rupp2012fast,
 
 > title={Fast and accurate modeling of molecular
-
 > ```none
 > atomization energies with machine learning},
 > ```
-
 > author={Rupp, Matthias and Tkatchenko, Alexandre and M{“u}ller,
-
 > ```none
 > Klaus-Robert and Von Lilienfeld, O Anatole},
 > ```
-
 > journal={Physical review letters}, volume={108},
 > number={5}, pages={058301},
 > year={2012}, publisher={APS}}
@@ -1347,9 +1165,8 @@ Reference:
 
 #### transform_one(mol: Molecule)
 
-
 * **Parameters**
-**mol** (*Molecule*) – pymatgen molecule.
+  **mol** (*Molecule*) – pymatgen molecule.
 
 Returns: np.ndarray the eigen value vectors of Coulob matrix
 
@@ -1363,33 +1180,26 @@ Reference:
 @article{rupp2012fast,
 
 > title={Fast and accurate modeling of molecular
-
 > ```none
 > atomization energies with machine learning},
 > ```
-
 > author={Rupp, Matthias and Tkatchenko, Alexandre and M{“u}ller,
-
 > ```none
 > Klaus-Robert and Von Lilienfeld, O Anatole},
 > ```
-
 > journal={Physical review letters}, volume={108},
 > number={5}, pages={058301},
 > year={2012}, publisher={APS}}
 
 #### *abc_impl(* = <_abc.*abc_data object* )
 
-#### *static* _get_columb_mat(s: Molecule | Structure)
-
+#### *static* \_get_columb_mat(s: Molecule | Structure)
 
 * **Parameters**
-**s** (*Molecule/Structure*) – input Molecule or Structure. Structure
-is not advised since the feature will depend on the supercell size.
-
-
+  **s** (*Molecule/Structure*) – input Molecule or Structure. Structure
+  is not advised since the feature will depend on the supercell size.
 * **Returns**
-Coulomb matrix of the structure
+  Coulomb matrix of the structure
 
 #### *sklearn_auto_wrap_output_keys(* = {‘transform’_ )
 
@@ -1397,27 +1207,21 @@ Coulomb matrix of the structure
 
 #### get_coulomb_mat(s: Molecule | Structure)
 
-
 * **Parameters**
-**s** (*Molecule/Structure*) – input Molecule or Structure. Structure
-is not advised since the feature will depend on the supercell size
-
-
+  **s** (*Molecule/Structure*) – input Molecule or Structure. Structure
+  is not advised since the feature will depend on the supercell size
 * **Returns**
-Coulomb matrix of the structure.
+  Coulomb matrix of the structure.
 
 #### transform_one(s: Molecule | Structure)
 
-
 * **Parameters**
-**s** (*Molecule/Structure*) – pymatgen Molecule or Structure, Structure is not
-advised since the features will depend on supercell size.
-
-
+  **s** (*Molecule/Structure*) – pymatgen Molecule or Structure, Structure is not
+  advised since the features will depend on supercell size.
 * **Returns**
-pandas.DataFrame.
-The column is index of the structure, which is 0 for single input
-df[0] returns the serials of coulomb_mat raval
+  pandas.DataFrame.
+  The column is index of the structure, which is 0 for single input
+  df[0] returns the serials of coulomb_mat raval
 
 ### *class* maml.describers._structure.DistinctSiteProperty(properties: list[str], symprec: float = 0.1, wyckoffs: list[str] | None = None, feature_batch: str = ‘pandas_concat’, \*\*kwargs)
 
@@ -1432,15 +1236,13 @@ Reference:
 
 > title={Deep neural networks for accurate predictions of crystal stability},
 > author={Ye, Weike and Chen, Chi and Wang, Zhenbin and
-
 > > Chu, Iek-Heng and Ong, Shyue Ping},
-
-> journal={Nature communications},
-> volume={9},
-> number={1},
-> pages={1–6},
-> year={2018},
-> publisher={Nature Publishing Group}}
+> > journal={Nature communications},
+> > volume={9},
+> > number={1},
+> > pages={1–6},
+> > year={2018},
+> > publisher={Nature Publishing Group}}
 
 #### *abc_impl(* = <_abc.*abc_data object* )
 
@@ -1452,13 +1254,10 @@ Reference:
 
 #### transform_one(structure: Structure)
 
-
 * **Parameters**
-**structure** (*pymatgen Structure*) – pymatgen structure for descriptor computation.
-
-
+  **structure** (*pymatgen Structure*) – pymatgen structure for descriptor computation.
 * **Returns**
-pd.DataFrame that contains the distinct position labeled features
+  pd.DataFrame that contains the distinct position labeled features
 
 ### *class* maml.describers._structure.RandomizedCoulombMatrix(random_seed: int | None = None, is_ravel: bool = True, \*\*kwargs)
 
@@ -1470,19 +1269,15 @@ Reference:
 @article{montavon2013machine,
 
 > title={Machine learning of molecular electronic properties
-
 > ```none
 > in chemical compound space},
 > ```
-
 > author={Montavon, Gr{‘e}goire and Rupp, Matthias and Gobre,
-
 > ```none
 > Vivekanand and Vazquez-Mayagoitia, Alvaro and Hansen, Katja
 > and Tkatchenko, Alexandre and M{"u}ller, Klaus-Robert and
 > Von Lilienfeld, O Anatole},
 > ```
-
 > journal={New Journal of Physics},
 > volume={15}, number={9},pages={095003},
 > year={2013},publisher={IOP Publishing}}
@@ -1501,20 +1296,14 @@ Returns the randomized matrix
 (iii) draw a zero-mean unit-variance noise vector ε of the same
 
 > size as row_norms.
-
-
 1. permute the rows and columns of C with the same permutation
 
 > that sorts row_norms + ε.
-
-
 * **Parameters**
-**s** (*Molecule/Structure*) – pymatgen Molecule or Structure, Structure is not
-advised since the features will depend on supercell size
-
-
+  **s** (*Molecule/Structure*) – pymatgen Molecule or Structure, Structure is not
+  advised since the features will depend on supercell size
 * **Returns**
-pd.DataFrame randomized Coulomb matrix
+  pd.DataFrame randomized Coulomb matrix
 
 #### transform_one(s: Molecule | Structure)
 
@@ -1535,19 +1324,15 @@ Reference:
 @inproceedings{montavon2012learning,
 
 > title={Learning invariant representations
-
 > ```none
 > of molecules for atomization energy prediction},
 > ```
-
 > author={Montavon, Gr{‘e}goire and Hansen, Katja
-
 > ```none
 > and Fazli, Siamac and Rupp, Matthias and Biegler,
 > Franziska and Ziehe, Andreas and Tkatchenko, Alexandre
 > and Lilienfeld, Anatole V and M{"u}ller, Klaus-Robert},
 > ```
-
 > booktitle={Advances in neural information processing systems},
 > pages={440–448}, year={2012}}
 
@@ -1561,14 +1346,11 @@ Reference:
 
 Returns the matrix sorted by the row norm.
 
-
 * **Parameters**
-**s** (*Molecule/Structure*) – pymatgen Molecule or Structure, Structure is not
-advised since the features will depend on supercell size
-
-
+  **s** (*Molecule/Structure*) – pymatgen Molecule or Structure, Structure is not
+  advised since the features will depend on supercell size
 * **Returns**
-pd.DataFrame, sorted Coulomb matrix
+  pd.DataFrame, sorted Coulomb matrix
 
 #### transform_one(s: Molecule | Structure)
 

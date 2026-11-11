@@ -58,9 +58,8 @@ DFT static calculation wrapped as energy model.
 
 Predict energy from structure.
 
-
 * **Parameters**
-**structure** – (pymatgen Structure).
+  **structure** – (pymatgen Structure).
 
 Returns: float
 

@@ -1,0 +1,38 @@
+name: Lint
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      max-parallel: 4
+      matrix:
+        python-version: [3.11]
+
+    steps:
+    - uses: actions/checkout@v6
+    - name: Install uv with python version.
+      uses: astral-sh/setup-uv@v8.1.0
+      with:
+        python-version: ${{ matrix.python-version }}
+        enable-cache: true
+        cache-dependency-glob: "uv.lock"
+    - name: Install dependencies
+      run: |
+        uv sync --group lint
+
+    - name: ruff
+      run: |
+        uv run ruff --version
+        uv run ruff check src tests
+        uv run ruff format src tests --check
+
+    - name: mypy
+      run: |
+        uv run mypy --version
+        uv run mypy src

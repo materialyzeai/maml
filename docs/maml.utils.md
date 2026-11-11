@@ -29,9 +29,8 @@ Data splitter base class.
 Split the mat_ids, optionally one can provide
 targets. This is useful in stratified split.
 
-
 * **Parameters**
-**mat_ids** (*list*) – list of material ids
+  **mat_ids** (*list*) – list of material ids
 
 Returns: (train_ids, val_ids, test_ids) or
 
@@ -47,16 +46,10 @@ Dummy scaler does nothing.
 
 ### *classmethod* from_training_data(structures: list[StructureOrMolecule], targets: VectorLike, is_intensive: bool = True)
 
-
 * **Parameters**
-
-    * **structures** (*list*) – list of structures/molecules
-
-
-    * **targets** (*list*) – vector of target properties
-
-
-    * **is_intensive** (*bool*) – whether the target is intensive
+  * **structures** (*list*) – list of structures/molecules
+  * **targets** (*list*) – vector of target properties
+  * **is_intensive** (*bool*) – whether the target is intensive
 
 Returns: DummyScaler.
 
@@ -68,23 +61,16 @@ return as it is
 :param n: number of atoms
 :type n: int
 
-
 * **Returns**
-transformed_target.
+  transformed_target.
 
 ### *static* transform(target: float, n: int = 1)
 
-
 * **Parameters**
-
-    * **target** (*float*) – target numerical value
-
-
-    * **n** (*int*) – number of atoms
-
-
+  * **target** (*float*) – target numerical value
+  * **n** (*int*) – number of atoms
 * **Returns**
-target.
+  target.
 
 ## *class* maml.utils.LinearProfile(value_start: float, value_end: float = 0.0, max_steps: int = 100, \*\*kwargs)
 
@@ -110,22 +96,11 @@ and monty ScratchDir is that multiple temp directories are created here.
 It enables the running of multiple jobs simultaneously in the directories
 The way it works is as follows:
 
-
 1. Create multiple temp dirs in specified root path.
-
-
 2. Optionally copy input files from current directory to temp dir.
-
-
 3. User loops among all directories
-
-
 4. User performs specified operations in each directories
-
-
 5. Change back to original directory.
-
-
 6. Delete temp dir.
 
 ### SCR_LINK(_ = ‘scratch_link_ )
@@ -147,9 +122,8 @@ Inverse transform of the target
 :param n: number of atoms
 :type n: int
 
-
 * **Returns**
-target.
+  target.
 
 ### transform(target: float, n: int = 1)
 
@@ -159,9 +133,8 @@ Transform the target values into new target values
 :param n: number of atoms
 :type n: int
 
-
 * **Returns**
-scaled target.
+  scaled target.
 
 ## *class* maml.utils.ShuffleSplitter(ratios: str = ‘80/10/10’, delim: str = ‘/’, random_seed: int | None = None)
 
@@ -213,9 +186,8 @@ Inverse transform of the target
 :param n: number of atoms
 :type n: int
 
-
 * **Returns**
-original target.
+  original target.
 
 ### transform(target: float, n: int = 1)
 
@@ -225,9 +197,8 @@ Transform numeric values according the mean and std, plus a factor n
 :param n: number of atoms
 :type n: int
 
-
 * **Returns**
-scaled target.
+  scaled target.
 
 ## *class* maml.utils.Stats()
 
@@ -246,13 +217,9 @@ supported
 
 Weighted average.
 
-
 * **Parameters**
-
-    * **data** (*list*) – list of float data
-
-
-    * **weights** (*list*\* or \**None*) – weights for each data point
+  * **data** (*list*) – list of float data
+  * **weights** (*list*\* or \**None*) – weights for each data point
 
 Returns: average value
 
@@ -260,13 +227,9 @@ Returns: average value
 
 Geometric mean of the data.
 
-
 * **Parameters**
-
-    * **data** (*list*) – list of float data
-
-
-    * **weights** (*list*\* or \**None*) – weights for each data point
+  * **data** (*list*) – list of float data
+  * **weights** (*list*\* or \**None*) – weights for each data point
 
 Returns: geometric mean of the distribution
 
@@ -274,13 +237,9 @@ Returns: geometric mean of the distribution
 
 harmonic mean of the data.
 
-
 * **Parameters**
-
-    * **data** (*list*) – list of float data
-
-
-    * **weights** (*list*\* or \**None*) – weights for each data point
+  * **data** (*list*) – list of float data
+  * **weights** (*list*\* or \**None*) – weights for each data point
 
 Returns: harmonic mean of the distribution
 
@@ -288,13 +247,9 @@ Returns: harmonic mean of the distribution
 
 inverse mean.
 
-
 * **Parameters**
-
-    * **data** (*list*) – list of float data
-
-
-    * **weights** (*list*\* or \**None*) – weights for each data point
+  * **data** (*list*) – list of float data
+  * **weights** (*list*\* or \**None*) – weights for each data point
 
 Returns: average value
 
@@ -302,13 +257,9 @@ Returns: average value
 
 Kurtosis of the distribution.
 
-
 * **Parameters**
-
-    * **data** (*list*) – list of float data
-
-
-    * **weights** (*list*\* or \**None*) – weights for each data point
+  * **data** (*list*) – list of float data
+  * **weights** (*list*\* or \**None*) – weights for each data point
 
 Returns: Kurtosis of the distribution
 
@@ -326,13 +277,9 @@ Returns: maximum value
 
 Weighted average.
 
-
 * **Parameters**
-
-    * **data** (*list*) – list of float data
-
-
-    * **weights** (*list*\* or \**None*) – weights for each data point
+  * **data** (*list*) – list of float data
+  * **weights** (*list*\* or \**None*) – weights for each data point
 
 Returns: average value
 
@@ -340,13 +287,9 @@ Returns: average value
 
 mean absolute deviation.
 
-
 * **Parameters**
-
-    * **data** (*list*) – list of float data
-
-
-    * **weights** (*list*) – optional weights
+  * **data** (*list*) – list of float data
+  * **weights** (*list*) – optional weights
 
 Returns: mean absolute deviation
 
@@ -354,13 +297,9 @@ Returns: mean absolute deviation
 
 mean absolute error.
 
-
 * **Parameters**
-
-    * **data** (*list*) – list of float data
-
-
-    * **weights** (*list*) – optional weights
+  * **data** (*list*) – list of float data
+  * **weights** (*list*) – optional weights
 
 Returns: mean absolute error
 
@@ -379,13 +318,9 @@ Returns: minimum value
 Mode of data, if multiple entries have equal counts,
 compute the average of those.
 
-
 * **Parameters**
-
-    * **data** (*list*) – list of float data
-
-
-    * **weights** (*list*) – optional weights
+  * **data** (*list*) – list of float data
+  * **weights** (*list*) – optional weights
 
 Returns: mode of values, i.e., max - min
 
@@ -398,20 +333,11 @@ order = 2 means standard deviation
 order > 2 corresponds to higher order moment to
 
 > the 1./order power
-
-
 * **Parameters**
-
-    * **data** (*list*) – list of float data
-
-
-    * **weights** (*list*\* or \**None*) – weights for each data points
-
-
-    * **order** (*int*) – moment order
-
-
-    * **max_order** (*int*) – if set, it will overwrite order
+  * **data** (*list*) – list of float data
+  * **weights** (*list*\* or \**None*) – weights for each data points
+  * **order** (*int*) – moment order
+  * **max_order** (*int*) – if set, it will overwrite order
 
 Returns: float or list of floats
 
@@ -419,16 +345,10 @@ Returns: float or list of floats
 
 power mean [https://en.wikipedia.org/wiki/Generalized_mean](https://en.wikipedia.org/wiki/Generalized_mean).
 
-
 * **Parameters**
-
-    * **data** (*list*) – list of float data
-
-
-    * **weights** (*list*\* or \**None*) – weights for each data point
-
-
-    * **p** (*int*) – power
+  * **data** (*list*) – list of float data
+  * **weights** (*list*\* or \**None*) – weights for each data point
+  * **p** (*int*) – power
 
 Returns: power mean of the distribution
 
@@ -448,16 +368,10 @@ Since we cannot calculate the geometric means on negative or zero values,
 we can first shift all values to positive and then calculate the geometric mean
 afterwards, we shift the computed geometric mean back by a shift value.
 
-
 * **Parameters**
-
-    * **data** (*list*) – list of float data
-
-
-    * **weights** (*list*\* or \**None*) – weights for each data point
-
-
-    * **shift** (*float*) – shift value
+  * **data** (*list*) – list of float data
+  * **weights** (*list*\* or \**None*) – weights for each data point
+  * **shift** (*float*) – shift value
 
 Returns: geometric mean of the distribution
 
@@ -465,13 +379,9 @@ Returns: geometric mean of the distribution
 
 Skewness of the distribution.
 
-
 * **Parameters**
-
-    * **data** (*list*) – list of float data
-
-
-    * **weights** (*list*\* or \**None*) – weights for each data point
+  * **data** (*list*) – list of float data
+  * **weights** (*list*\* or \**None*) – weights for each data point
 
 Returns: Skewness of the distribution
 
@@ -479,13 +389,9 @@ Returns: Skewness of the distribution
 
 Standard deviation.
 
-
 * **Parameters**
-
-    * **data** (*list*) – list of float data
-
-
-    * **weights** (*list*\* or \**None*) – weights for each data point
+  * **data** (*list*) – list of float data
+  * **weights** (*list*\* or \**None*) – weights for each data point
 
 Returns: Standard deviation
 
@@ -522,24 +428,14 @@ and the corresponding forces and structures to lammps format
 
 The lattice are formed by the row vectors.
 
-
 * **Parameters**
-
-    * **structures** (*list*) – list of structures
-
-
-    * **forces** (*list*) – list of force matrixs (m, 3)
-
-
-    * **stresses** (*list*) – list of stress vectors
-
-
-    * **stress_format** (*str*) – stress format, choose from
-“VASP”, “LAMMPS”, “SNAP”
-
-
-    * **return_none** (*bool*) – whether to return list of None
-for forces and stresses
+  * **structures** (*list*) – list of structures
+  * **forces** (*list*) – list of force matrixs (m, 3)
+  * **stresses** (*list*) – list of stress vectors
+  * **stress_format** (*str*) – stress format, choose from
+    “VASP”, “LAMMPS”, “SNAP”
+  * **return_none** (*bool*) – whether to return list of None
+    for forces and stresses
 
 Returns: structures [forces], [stresses]
 
@@ -548,24 +444,16 @@ Returns: structures [forces], [stresses]
 Method to convert a list of docs into objects, e.g.,
 Structure and DataFrame.
 
-
 * **Parameters**
-
-    * **docs** (*[**dict**]*) – List of docs. Each doc should have the same
-format as one returned from .dft.parse_dir.
-
-
-    * **include_stress** (*bool*) – Whether to include stress components.
-
-
-    * **\*\*kwargs** – Passthrough.
-
-
+  * **docs** (    *[**dict**]*) – List of docs. Each doc should have the same
+    format as one returned from .dft.parse_dir.
+  * **include_stress** (*bool*) – Whether to include stress components.
+  * **\*\*kwargs** – Passthrough.
 * **Returns**
-A list of structures, and a DataFrame with energy and force
-data in ‘y_orig’ column, data type (‘energy’ or ‘force’) in
-‘dtype’ column, No. of atoms in ‘n’ column sharing the same row
-of energy data while ‘n’ being 1 for the rows of force data.
+  A list of structures, and a DataFrame with energy and force
+  data in ‘y_orig’ column, data type (‘energy’ or ‘force’) in
+  ‘dtype’ column, No. of atoms in ‘n’ column sharing the same row
+  of energy data while ‘n’ being 1 for the rows of force data.
 
 ## maml.utils.cwt(z: np.ndarray, widths: np.ndarray, wavelet: str | Callable = ‘morlet2’, \*\*kwargs)
 
@@ -583,9 +471,8 @@ Returns: 2D scalogram.
 
 Get feature size from a test system.
 
-
 * **Parameters**
-**describer** (*BaseDescriber*) – describers instance
+  **describer** (*BaseDescriber*) – describers instance
 
 ## maml.utils.fft_magnitude(z: ndarray)
 
@@ -601,26 +488,23 @@ Returns: 1D magnitude.
 For a describers, get a dummy object for transform_one.
 This relies on the type hint.
 
-
 * **Parameters**
-**instance** (*BaseDescriber*) – describers instance
+  **instance** (*BaseDescriber*) – describers instance
 
 ## maml.utils.get_full_args(func: Callable)
 
 Get args from function.
 
-
 * **Parameters**
-**func** (*callable*) – function to determine the args
+  **func** (*callable*) – function to determine the args
 
 ## maml.utils.get_full_stats_and_funcs(stats: list)
 
 Get expanded stats function name str and the corresponding
 function callables.
 
-
 * **Parameters**
-**stats** (*list*) – a list of stats names, e.g, [‘mean’, ‘std’, ‘moment:1:None’]
+  **stats** (*list*) – a list of stats names, e.g, [‘mean’, ‘std’, ‘moment:1:None’]
 
 Returns: list of stats names, list of stats callable
 
@@ -629,13 +513,9 @@ Returns: list of stats names, list of stats callable
 Transform structure to lammps compatible structure. The lattice and rotation
 matrix are returned.
 
-
 * **Parameters**
-
-    * **structure** (*Structure*) – pymatgen structure
-
-
-    * **origin** (*tuple*) – origin coordinates
+  * **structure** (*Structure*) – pymatgen structure
+  * **origin** (*tuple*) – origin coordinates
 
 Returns: new lattice, rotation symmetry operator, rotation matrix
 
@@ -660,27 +540,17 @@ Returns: decorated function
 Method to convert structures and their properties in to
 datapool format.
 
-
 * **Parameters**
-
-    * **structures** (*[**Structure**]*) – The list of Pymatgen Structure object.
-
-
-    * **energies** (*[**float**]*) – The list of total energies of each structure
-in structures list.
-
-
-    * **forces** (*[**np.array**]*) – List of (m, 3) forces array of each structure
-with m atoms in structures list. m can be varied with each
-single structure case.
-
-
-    * **stresses** (*list*) – List of (6, ) virial stresses of each
-structure in structures list.
-
-
+  * **structures** (    *[**Structure**]*) – The list of Pymatgen Structure object.
+  * **energies** (    *[**float**]*) – The list of total energies of each structure
+    in structures list.
+  * **forces** (    *[**np.array**]*) – List of (m, 3) forces array of each structure
+    with m atoms in structures list. m can be varied with each
+    single structure case.
+  * **stresses** (*list*) – List of (6, ) virial stresses of each
+    structure in structures list.
 * **Returns**
-([dict])
+  ([dict])
 
 ## maml.utils.spectrogram(z: np.ndarray, return_time_freq: bool = False)
 
@@ -698,9 +568,8 @@ Convert a list of stats str into a fully expanded list.
 This applies mainly to stats that can return a list of values, e.g.,
 moment with max_order > 1.
 
-
 * **Parameters**
-**stats_list** (*list*) – list of stats str
+  **stats_list** (*list*) – list of stats str
 
 Returns: list of expanded stats str
 
@@ -720,16 +589,12 @@ Returns: list of float stress vector
 
 convert a length-6 stress list to stress matrix 3x3.
 
-
 * **Parameters**
-
-    * **stress** (*list*\* of \**float*) – list of stress
-
-
-    * **stress_format** (*str*) – Supported formats are the follows
-VASP: xx, yy, zz, xy, yz, xz
-LAMMPS: xx, yy, zz, xy, zx, yz
-SNAP: xx, yy, zz, yz, xz, xy
+  * **stress** (*list*\* of \**float*) – list of stress
+  * **stress_format** (*str*) – Supported formats are the follows
+    VASP: xx, yy, zz, xy, yz, xz
+    LAMMPS: xx, yy, zz, xy, zx, yz
+    SNAP: xx, yy, zz, yz, xz, xy
 
 Returns: 3x3 stress matrix
 
@@ -754,13 +619,10 @@ return np.ndarray.
 
 Convert str/structure or composition to compositions.
 
-
 * **Parameters**
-**obj** (*str/structure/composition*) – object to convert
-
-
+  **obj** (*str/structure/composition*) – object to convert
 * **Returns**
-Composition object
+  Composition object
 
 ## maml.utils.write_data_from_structure(structure: Structure, filename: str, ff_elements: list[str] | None = None, significant_figures: int = 6, origin: tuple = (0, 0, 0))
 
@@ -797,24 +659,16 @@ Convert data list to docs or pool existing data lists for training.
 Method to convert a list of docs into objects, e.g.,
 Structure and DataFrame.
 
-
 * **Parameters**
-
-    * **docs** (*[**dict**]*) – List of docs. Each doc should have the same
-format as one returned from .dft.parse_dir.
-
-
-    * **include_stress** (*bool*) – Whether to include stress components.
-
-
-    * **\*\*kwargs** – Passthrough.
-
-
+  * **docs** (    *[**dict**]*) – List of docs. Each doc should have the same
+    format as one returned from .dft.parse_dir.
+  * **include_stress** (*bool*) – Whether to include stress components.
+  * **\*\*kwargs** – Passthrough.
 * **Returns**
-A list of structures, and a DataFrame with energy and force
-data in ‘y_orig’ column, data type (‘energy’ or ‘force’) in
-‘dtype’ column, No. of atoms in ‘n’ column sharing the same row
-of energy data while ‘n’ being 1 for the rows of force data.
+  A list of structures, and a DataFrame with energy and force
+  data in ‘y_orig’ column, data type (‘energy’ or ‘force’) in
+  ‘dtype’ column, No. of atoms in ‘n’ column sharing the same row
+  of energy data while ‘n’ being 1 for the rows of force data.
 
 ### maml.utils._data_conversion.doc_from(structure, energy=None, force=None, stress=None)
 
@@ -822,52 +676,32 @@ Method to convert structure and its properties into doc
 format for further processing. If properties are None, zeros
 array will be used.
 
-
 * **Parameters**
-
-    * **structure** (*Structure*) – Pymatgen Structure object.
-
-
-    * **energy** (*float*) – The total energy of the structure.
-
-
-    * **force** (*np.array*) – The (m, 3) forces array of the structure
-where m is the number of atoms in structure.
-
-
-    * **stress** (*list/np.array*) – The (6, ) stresses array of the
-structure.
-
-
+  * **structure** (*Structure*) – Pymatgen Structure object.
+  * **energy** (*float*) – The total energy of the structure.
+  * **force** (*np.array*) – The (m, 3) forces array of the structure
+    where m is the number of atoms in structure.
+  * **stress** (*list/np.array*) – The (6, ) stresses array of the
+    structure.
 * **Returns**
-(dict)
+  (dict)
 
 ### maml.utils._data_conversion.pool_from(structures, energies=None, forces=None, stresses=None)
 
 Method to convert structures and their properties in to
 datapool format.
 
-
 * **Parameters**
-
-    * **structures** (*[**Structure**]*) – The list of Pymatgen Structure object.
-
-
-    * **energies** (*[**float**]*) – The list of total energies of each structure
-in structures list.
-
-
-    * **forces** (*[**np.array**]*) – List of (m, 3) forces array of each structure
-with m atoms in structures list. m can be varied with each
-single structure case.
-
-
-    * **stresses** (*list*) – List of (6, ) virial stresses of each
-structure in structures list.
-
-
+  * **structures** (    *[**Structure**]*) – The list of Pymatgen Structure object.
+  * **energies** (    *[**float**]*) – The list of total energies of each structure
+    in structures list.
+  * **forces** (    *[**np.array**]*) – List of (m, 3) forces array of each structure
+    with m atoms in structures list. m can be varied with each
+    single structure case.
+  * **stresses** (*list*) – List of (6, ) virial stresses of each
+    structure in structures list.
 * **Returns**
-([dict])
+  ([dict])
 
 ### maml.utils._data_conversion.to_array(x)
 
@@ -891,9 +725,8 @@ Data splitter base class.
 Split the mat_ids, optionally one can provide
 targets. This is useful in stratified split.
 
-
 * **Parameters**
-**mat_ids** (*list*) – list of material ids
+  **mat_ids** (*list*) – list of material ids
 
 Returns: (train_ids, val_ids, test_ids) or
 
@@ -924,18 +757,16 @@ Dummy test systems.
 
 Get feature size from a test system.
 
-
 * **Parameters**
-**describer** (*BaseDescriber*) – describers instance
+  **describer** (*BaseDescriber*) – describers instance
 
 ### maml.utils._dummy.get_describer_dummy_obj(instance)
 
 For a describers, get a dummy object for transform_one.
 This relies on the type hint.
 
-
 * **Parameters**
-**instance** (*BaseDescriber*) – describers instance
+  **instance** (*BaseDescriber*) – describers instance
 
 ## maml.utils._inspect module
 
@@ -945,17 +776,15 @@ Inspect function args.
 
 Get args from function.
 
-
 * **Parameters**
-**func** (*callable*) – function to determine the args
+  **func** (*callable*) – function to determine the args
 
 ### maml.utils._inspect.get_param_types(func)
 
 Get param and type info.
 
-
 * **Parameters**
-**func** (*callable*) – function to determine the arg types
+  **func** (*callable*) – function to determine the arg types
 
 ## maml.utils._jit module
 
@@ -978,9 +807,8 @@ LAMMPS utility.
 
 Get atomic mass from element or specie string.
 
-
 * **Parameters**
-**element_or_specie** (*str*) – specie or element string
+  **element_or_specie** (*str*) – specie or element string
 
 Returns: float mass
 
@@ -988,9 +816,8 @@ Returns: float mass
 
 Get charge from element or specie.
 
-
 * **Parameters**
-**element_or_specie** (*str*\* or **Element** or \**Species*) – element or specie
+  **element_or_specie** (*str*\* or **Element** or \**Species*) – element or specie
 
 Returns: charge float
 
@@ -1005,24 +832,14 @@ and the corresponding forces and structures to lammps format
 
 The lattice are formed by the row vectors.
 
-
 * **Parameters**
-
-    * **structures** (*list*) – list of structures
-
-
-    * **forces** (*list*) – list of force matrixs (m, 3)
-
-
-    * **stresses** (*list*) – list of stress vectors
-
-
-    * **stress_format** (*str*) – stress format, choose from
-“VASP”, “LAMMPS”, “SNAP”
-
-
-    * **return_none** (*bool*) – whether to return list of None
-for forces and stresses
+  * **structures** (*list*) – list of structures
+  * **forces** (*list*) – list of force matrixs (m, 3)
+  * **stresses** (*list*) – list of stress vectors
+  * **stress_format** (*str*) – stress format, choose from
+    “VASP”, “LAMMPS”, “SNAP”
+  * **return_none** (*bool*) – whether to return list of None
+    for forces and stresses
 
 Returns: structures [forces], [stresses]
 
@@ -1031,13 +848,9 @@ Returns: structures [forces], [stresses]
 Transform structure to lammps compatible structure. The lattice and rotation
 matrix are returned.
 
-
 * **Parameters**
-
-    * **structure** (*Structure*) – pymatgen structure
-
-
-    * **origin** (*tuple*) – origin coordinates
+  * **structure** (*Structure*) – pymatgen structure
+  * **origin** (*tuple*) – origin coordinates
 
 Returns: new lattice, rotation symmetry operator, rotation matrix
 
@@ -1057,16 +870,12 @@ Returns: list of float stress vector
 
 convert a length-6 stress list to stress matrix 3x3.
 
-
 * **Parameters**
-
-    * **stress** (*list*\* of \**float*) – list of stress
-
-
-    * **stress_format** (*str*) – Supported formats are the follows
-VASP: xx, yy, zz, xy, yz, xz
-LAMMPS: xx, yy, zz, xy, zx, yz
-SNAP: xx, yy, zz, yz, xz, xy
+  * **stress** (*list*\* of \**float*) – list of stress
+  * **stress_format** (*str*) – Supported formats are the follows
+    VASP: xx, yy, zz, xy, yz, xz
+    LAMMPS: xx, yy, zz, xy, zx, yz
+    SNAP: xx, yy, zz, yz, xz, xy
 
 Returns: 3x3 stress matrix
 
@@ -1103,13 +912,10 @@ Materials utils.
 
 Convert str/structure or composition to compositions.
 
-
 * **Parameters**
-**obj** (*str/structure/composition*) – object to convert
-
-
+  **obj** (*str/structure/composition*) – object to convert
 * **Returns**
-Composition object
+  Composition object
 
 ## maml.utils._preprocessing module
 
@@ -1123,16 +929,10 @@ Dummy scaler does nothing.
 
 #### *classmethod* from_training_data(structures: list[StructureOrMolecule], targets: VectorLike, is_intensive: bool = True)
 
-
 * **Parameters**
-
-    * **structures** (*list*) – list of structures/molecules
-
-
-    * **targets** (*list*) – vector of target properties
-
-
-    * **is_intensive** (*bool*) – whether the target is intensive
+  * **structures** (*list*) – list of structures/molecules
+  * **targets** (*list*) – vector of target properties
+  * **is_intensive** (*bool*) – whether the target is intensive
 
 Returns: DummyScaler.
 
@@ -1144,23 +944,16 @@ return as it is
 :param n: number of atoms
 :type n: int
 
-
 * **Returns**
-transformed_target.
+  transformed_target.
 
 #### *static* transform(target: float, n: int = 1)
 
-
 * **Parameters**
-
-    * **target** (*float*) – target numerical value
-
-
-    * **n** (*int*) – number of atoms
-
-
+  * **target** (*float*) – target numerical value
+  * **n** (*int*) – number of atoms
 * **Returns**
-target.
+  target.
 
 ### *class* maml.utils._preprocessing.Scaler()
 
@@ -1179,9 +972,8 @@ Inverse transform of the target
 :param n: number of atoms
 :type n: int
 
-
 * **Returns**
-target.
+  target.
 
 #### transform(target: float, n: int = 1)
 
@@ -1191,9 +983,8 @@ Transform the target values into new target values
 :param n: number of atoms
 :type n: int
 
-
 * **Returns**
-scaled target.
+  scaled target.
 
 ### *class* maml.utils._preprocessing.StandardScaler(mean: float = 0.0, std: float = 1.0, is_intensive: bool = True)
 
@@ -1230,9 +1021,8 @@ Inverse transform of the target
 :param n: number of atoms
 :type n: int
 
-
 * **Returns**
-original target.
+  original target.
 
 #### transform(target: float, n: int = 1)
 
@@ -1242,9 +1032,8 @@ Transform numeric values according the mean and std, plus a factor n
 :param n: number of atoms
 :type n: int
 
-
 * **Returns**
-scaled target.
+  scaled target.
 
 ## maml.utils._signal_processing module
 
@@ -1321,13 +1110,9 @@ supported
 
 Weighted average.
 
-
 * **Parameters**
-
-    * **data** (*list*) – list of float data
-
-
-    * **weights** (*list*\* or \**None*) – weights for each data point
+  * **data** (*list*) – list of float data
+  * **weights** (*list*\* or \**None*) – weights for each data point
 
 Returns: average value
 
@@ -1335,13 +1120,9 @@ Returns: average value
 
 Geometric mean of the data.
 
-
 * **Parameters**
-
-    * **data** (*list*) – list of float data
-
-
-    * **weights** (*list*\* or \**None*) – weights for each data point
+  * **data** (*list*) – list of float data
+  * **weights** (*list*\* or \**None*) – weights for each data point
 
 Returns: geometric mean of the distribution
 
@@ -1349,13 +1130,9 @@ Returns: geometric mean of the distribution
 
 harmonic mean of the data.
 
-
 * **Parameters**
-
-    * **data** (*list*) – list of float data
-
-
-    * **weights** (*list*\* or \**None*) – weights for each data point
+  * **data** (*list*) – list of float data
+  * **weights** (*list*\* or \**None*) – weights for each data point
 
 Returns: harmonic mean of the distribution
 
@@ -1363,13 +1140,9 @@ Returns: harmonic mean of the distribution
 
 inverse mean.
 
-
 * **Parameters**
-
-    * **data** (*list*) – list of float data
-
-
-    * **weights** (*list*\* or \**None*) – weights for each data point
+  * **data** (*list*) – list of float data
+  * **weights** (*list*\* or \**None*) – weights for each data point
 
 Returns: average value
 
@@ -1377,13 +1150,9 @@ Returns: average value
 
 Kurtosis of the distribution.
 
-
 * **Parameters**
-
-    * **data** (*list*) – list of float data
-
-
-    * **weights** (*list*\* or \**None*) – weights for each data point
+  * **data** (*list*) – list of float data
+  * **weights** (*list*\* or \**None*) – weights for each data point
 
 Returns: Kurtosis of the distribution
 
@@ -1401,13 +1170,9 @@ Returns: maximum value
 
 Weighted average.
 
-
 * **Parameters**
-
-    * **data** (*list*) – list of float data
-
-
-    * **weights** (*list*\* or \**None*) – weights for each data point
+  * **data** (*list*) – list of float data
+  * **weights** (*list*\* or \**None*) – weights for each data point
 
 Returns: average value
 
@@ -1415,13 +1180,9 @@ Returns: average value
 
 mean absolute deviation.
 
-
 * **Parameters**
-
-    * **data** (*list*) – list of float data
-
-
-    * **weights** (*list*) – optional weights
+  * **data** (*list*) – list of float data
+  * **weights** (*list*) – optional weights
 
 Returns: mean absolute deviation
 
@@ -1429,13 +1190,9 @@ Returns: mean absolute deviation
 
 mean absolute error.
 
-
 * **Parameters**
-
-    * **data** (*list*) – list of float data
-
-
-    * **weights** (*list*) – optional weights
+  * **data** (*list*) – list of float data
+  * **weights** (*list*) – optional weights
 
 Returns: mean absolute error
 
@@ -1454,13 +1211,9 @@ Returns: minimum value
 Mode of data, if multiple entries have equal counts,
 compute the average of those.
 
-
 * **Parameters**
-
-    * **data** (*list*) – list of float data
-
-
-    * **weights** (*list*) – optional weights
+  * **data** (*list*) – list of float data
+  * **weights** (*list*) – optional weights
 
 Returns: mode of values, i.e., max - min
 
@@ -1473,20 +1226,11 @@ order = 2 means standard deviation
 order > 2 corresponds to higher order moment to
 
 > the 1./order power
-
-
 * **Parameters**
-
-    * **data** (*list*) – list of float data
-
-
-    * **weights** (*list*\* or \**None*) – weights for each data points
-
-
-    * **order** (*int*) – moment order
-
-
-    * **max_order** (*int*) – if set, it will overwrite order
+  * **data** (*list*) – list of float data
+  * **weights** (*list*\* or \**None*) – weights for each data points
+  * **order** (*int*) – moment order
+  * **max_order** (*int*) – if set, it will overwrite order
 
 Returns: float or list of floats
 
@@ -1494,16 +1238,10 @@ Returns: float or list of floats
 
 power mean [https://en.wikipedia.org/wiki/Generalized_mean](https://en.wikipedia.org/wiki/Generalized_mean).
 
-
 * **Parameters**
-
-    * **data** (*list*) – list of float data
-
-
-    * **weights** (*list*\* or \**None*) – weights for each data point
-
-
-    * **p** (*int*) – power
+  * **data** (*list*) – list of float data
+  * **weights** (*list*\* or \**None*) – weights for each data point
+  * **p** (*int*) – power
 
 Returns: power mean of the distribution
 
@@ -1523,16 +1261,10 @@ Since we cannot calculate the geometric means on negative or zero values,
 we can first shift all values to positive and then calculate the geometric mean
 afterwards, we shift the computed geometric mean back by a shift value.
 
-
 * **Parameters**
-
-    * **data** (*list*) – list of float data
-
-
-    * **weights** (*list*\* or \**None*) – weights for each data point
-
-
-    * **shift** (*float*) – shift value
+  * **data** (*list*) – list of float data
+  * **weights** (*list*\* or \**None*) – weights for each data point
+  * **shift** (*float*) – shift value
 
 Returns: geometric mean of the distribution
 
@@ -1540,13 +1272,9 @@ Returns: geometric mean of the distribution
 
 Skewness of the distribution.
 
-
 * **Parameters**
-
-    * **data** (*list*) – list of float data
-
-
-    * **weights** (*list*\* or \**None*) – weights for each data point
+  * **data** (*list*) – list of float data
+  * **weights** (*list*\* or \**None*) – weights for each data point
 
 Returns: Skewness of the distribution
 
@@ -1554,13 +1282,9 @@ Returns: Skewness of the distribution
 
 Standard deviation.
 
-
 * **Parameters**
-
-    * **data** (*list*) – list of float data
-
-
-    * **weights** (*list*\* or \**None*) – weights for each data point
+  * **data** (*list*) – list of float data
+  * **weights** (*list*\* or \**None*) – weights for each data point
 
 Returns: Standard deviation
 
@@ -1568,9 +1292,8 @@ Returns: Standard deviation
 
 Decorate to add allowed_stats to the Stats class.
 
-
 * **Parameters**
-**cls** – Stats class
+  **cls** – Stats class
 
 Returns: Stats class with allowed_stats attributes
 
@@ -1582,16 +1305,10 @@ Returns: Stats class with allowed_stats attributes
 
 Auxiliary function to compute moment.
 
-
 * **Parameters**
-
-    * **data** (*list*) – list of float data
-
-
-    * **weights** (*list*\* or \**None*) – weights for each data point
-
-
-    * **order** (*int*) – order of moment
+  * **data** (*list*) – list of float data
+  * **weights** (*list*\* or \**None*) – weights for each data point
+  * **order** (*int*) – order of moment
 
 Returns: moment of order
 
@@ -1600,9 +1317,8 @@ Returns: moment of order
 Get expanded stats function name str and the corresponding
 function callables.
 
-
 * **Parameters**
-**stats** (*list*) – a list of stats names, e.g, [‘mean’, ‘std’, ‘moment:1:None’]
+  **stats** (*list*) – a list of stats names, e.g, [‘mean’, ‘std’, ‘moment:1:None’]
 
 Returns: list of stats names, list of stats callable
 
@@ -1612,9 +1328,8 @@ Convert a list of stats str into a fully expanded list.
 This applies mainly to stats that can return a list of values, e.g.,
 moment with max_order > 1.
 
-
 * **Parameters**
-**stats_list** (*list*) – list of stats str
+  **stats_list** (*list*) – list of stats str
 
 Returns: list of expanded stats str
 
@@ -1634,27 +1349,16 @@ and monty ScratchDir is that multiple temp directories are created here.
 It enables the running of multiple jobs simultaneously in the directories
 The way it works is as follows:
 
-
 1. Create multiple temp dirs in specified root path.
-
-
 2. Optionally copy input files from current directory to temp dir.
-
-
 3. User loops among all directories
-
-
 4. User performs specified operations in each directories
-
-
 5. Change back to original directory.
-
-
 6. Delete temp dir.
 
 #### SCR_LINK(_ = ‘scratch_link_ )
 
-#### tempdirs(*: list[str* )
+#### tempdirs(    *: list[str* )
 
 ### maml.utils._tempfile._copy_r_with_suffix(src: str, dst: str, suffix: Any | None = None)
 
@@ -1662,13 +1366,9 @@ Implements a recursive copy function similar to Unix’s “cp -r” command.
 Surprisingly, python does not have a real equivalent. shutil.copytree
 only works if the destination directory is not present.
 
-
 * **Parameters**
-
-    * **src** (*str*) – Source folder to copy.
-
-
-    * **dst** (*str*) – Destination folder.
+  * **src** (*str*) – Source folder to copy.
+  * **dst** (*str*) – Destination folder.
 
 ## maml.utils._typing module
 

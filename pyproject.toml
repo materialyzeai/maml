@@ -1,77 +1,172 @@
 [build-system]
 requires = [
-     # pin NumPy version used in the build, to avoid building against the latest
-     # NumPy from PyPI (and potentially introducing ABI compatibilities with the
-     # actual NumPy version in the environment)
-     "numpy>=1.18,<1.20; python_version<'3.9'",
-     # don't pin version for as-yet-unreleased versions of Python
-     "numpy>=1.22; python_version>='3.9'",
-     "setuptools>=43.0.0"
+    # don't pin version for as-yet-unreleased versions of Python
+    "numpy>=1.22; python_version>='3.10'",
+    "setuptools>=43.0.0"
 ]
 build-backend = "setuptools.build_meta"
+
+[project]
+name = "maml"
+authors = [
+    { name = "Chi Chen", email = "t1ko@ucsd.edu" },
+    { name = "Yunxing Zuo", email = "marcel.nassar@intel.com" },
+    { name = "Ji Qi", email = "j1qi@ucsd.edu" },
+    { name = "Shyue Ping Ong", email = "ongsp@ucsd.edu" },
+]
+description = "MAterials Machine Learning (maml) is a machine learning library for materials science."
+readme = "README.md"
+requires-python = ">=3.11"
+keywords = [
+    "materials",
+    "interatomic potential",
+    "force field",
+    "science",
+    "property prediction",
+    "AI",
+    "machine learning",
+    "graph",
+    "deep learning",
+]
+license = { text = "BSD-3-Clause" }
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: BSD License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3",
+    "Topic :: Scientific/Engineering :: Chemistry",
+    "Topic :: Scientific/Engineering :: Information Analysis",
+    "Topic :: Scientific/Engineering :: Physics",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+]
+dependencies = [
+    "numpy",
+    "scipy",
+    "pymatgen>=2026.10.24",
+    "pymatgen-core>=2026.10.16",
+    "monty>=2026.10.21",
+    "mp-api",
+    "scikit-learn>=1.6.1",
+    "matgl>=4.1.1",
+    "fastcluster>=1.3.0",
+]
+version = "2025.4.3"
+
+[project.optional-dependencies]
+symbolic = ["cvxpy"]
+deep = ["tensorflow>=2"]
+gbe = ["mp-api[contribs]"]
+# deep_gpu = ["tensorflow-gpu>=2"]
+
+[dependency-groups]
+dev = [
+    "coverage>=7.7.1",
+    "coveralls>=4.0.1",
+    "pytest>=8.3.5",
+    "pytest-cov>=6.0.0",
+    "tensorflow>=2.18.1",
+    "matgl>=4.1.1",
+    "pre-commit>=4.2.0",
+    "pymongo>=4.19.0",
+    "cvxpy>=1.9.3",
+]
+lint = [
+    "mypy>=1.15.0",
+    "ruff>=0.11.2",
+]
+maintain = [
+    "docutils>=0.21.2",
+    "invoke>=2.2.0",
+    "myst-parser>=4.0.1",
+    "sphinx>=8.1.3",
+    "sphinx-markdown-builder>=0.6.8",
+]
+
+[tool.uv]
+# Guard against locking versions that only ship wheels for the dev machine (e.g. macOS arm64).
+required-environments = [
+    "sys_platform == 'linux' and platform_machine == 'x86_64' and python_version < '3.13'",
+    "sys_platform == 'darwin' and platform_machine == 'arm64' and python_version < '3.13'",
+]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+"maml" = [
+    "describers/data/*.json",
+    "apps/pes/params/*.*",
+    "apps/pes/templates/*/*.*",
+    "describers/data/megnet_models/*",
+    "describers/data/m3gnet_models/matbench_mp_e_form/0/m3gnet/*",
+]
 
 [tool.black]
 line-length = 120
 
 [tool.ruff]
-target-version = "py38"
 line-length = 120
-select = [
-  "B",    # flake8-bugbear
-  "C4",   # flake8-comprehensions
-  "D",    # pydocstyle
-  "E",    # pycodestyle error
-  "EXE",  # flake8-executable
-  "F",    # pyflakes
-  "FA",   # flake8-future-annotations
-  "FLY",  # flynt
-  "I",    # isort
-  "ICN",  # flake8-import-conventions
-  "ISC",  # flake8-implicit-str-concat
-  "PD",   # pandas-vet
-  "PERF", # perflint
-  "PIE",  # flake8-pie
-  "PL",   # pylint
-  "PT",   # flake8-pytest-style
-  "PYI",  # flakes8-pyi
-  "Q",    # flake8-quotes
-  "RET",  # flake8-return
-  "RSE",  # flake8-raise
-  "RUF",  # Ruff-specific rules
-  "SIM",  # flake8-simplify
-  "SLOT", # flake8-slots
-  "TCH",  # flake8-type-checking
-  "TID",  # tidy imports
-  "TID",  # flake8-tidy-imports
-  "UP",   # pyupgrade
-  "W",    # pycodestyle warning
-  "YTT",  # flake8-2020
+lint.select = [
+    "B", # flake8-bugbear
+    "C4", # flake8-comprehensions
+    "D", # pydocstyle
+    "E", # pycodestyle error
+    "EXE", # flake8-executable
+    "F", # pyflakes
+    "FA", # flake8-future-annotations
+    "FLY", # flynt
+    "I", # isort
+    "ICN", # flake8-import-conventions
+    "ISC", # flake8-implicit-str-concat
+    "PD", # pandas-vet
+    "PERF", # perflint
+    "PIE", # flake8-pie
+    "PL", # pylint
+    "PT", # flake8-pytest-style
+    "PYI", # flakes8-pyi
+    "Q", # flake8-quotes
+    "RET", # flake8-return
+    "RSE", # flake8-raise
+    "RUF", # Ruff-specific rules
+    "SIM", # flake8-simplify
+    "SLOT", # flake8-slots
+    "TCH", # flake8-type-checking
+    "TID", # tidy imports
+    "TID", # flake8-tidy-imports
+    "UP", # pyupgrade
+    "W", # pycodestyle warning
+    "YTT", # flake8-2020
 ]
-ignore = [
-  "B023",    # Function definition does not bind loop variable
-  "B028",    # No explicit stacklevel keyword argument found
-  "B904",    # Within an except clause, raise exceptions with ...
-  "C408",    # unnecessary-collection-call
-  "D105",    # Missing docstring in magic method
-  "D205",    # 1 blank line required between summary line and description
-  "D212",    # Multi-line docstring summary should start at the first line
-  "PD901",   # pandas-df-variable-name
-  "PERF203", # try-except-in-loop
-  "PERF401", # manual-list-comprehension (TODO fix these or wait for autofix)
-  "PLR",     # pylint refactor
-  "PLW2901", # Outer for loop variable overwritten by inner assignment target
-  "PT013",   # pytest-incorrect-pytest-import
-  "RUF012",  # Disable checks for mutable class args. This is a non-problem.
-  "SIM105",  # Use contextlib.suppress(OSError) instead of try-except-pass
+lint.ignore = [
+    "B023", # Function definition does not bind loop variable
+    "B028", # No explicit stacklevel keyword argument found
+    "B904", # Within an except clause, raise exceptions with ...
+    "C408", # unnecessary-collection-call
+    "D105", # Missing docstring in magic method
+    "D205", # 1 blank line required between summary line and description
+    "D212", # Multi-line docstring summary should start at the first line
+    "PERF203", # try-except-in-loop
+    "PERF401", # manual-list-comprehension (TODO fix these or wait for autofix)
+    "PLC0415", # `import` should be at the top-level of a file (lazy imports for optional deps are intentional)
+    "PLR", # pylint refactor
+    "PLW2901", # Outer for loop variable overwritten by inner assignment target
+    "PT013", # pytest-incorrect-pytest-import
+    "RUF012", # Disable checks for mutable class args. This is a non-problem.
+    "SIM105", # Use contextlib.suppress(OSError) instead of try-except-pass
 ]
-pydocstyle.convention = "google"
-isort.required-imports = ["from __future__ import annotations"]
-isort.split-on-trailing-comma = false
-exclude = ["tests", "tasks.py", "api-docs-source"]
+lint.pydocstyle.convention = "google"
+lint.isort.required-imports = ["from __future__ import annotations"]
+lint.isort.split-on-trailing-comma = false
+exclude = ["tasks.py", "api-docs-source"]
 
-[tool.ruff.per-file-ignores]
+[tool.ruff.lint.per-file-ignores]
 "__init__.py" = ["F401"]
-"*/tests/*" = ["D"]
+# PT009/PT027: unittest-style asserts remain in TestCase-based tests.
+"tests/**" = ["D", "PT009", "PT027"]
+"*/tests/*" = ["D", "PT009", "PT027"]
 "tasks.py" = ["D"]
 
 [tool.pytest.ini_options]
@@ -82,16 +177,17 @@ relative_files = true
 
 [tool.coverage.report]
 exclude_lines = [
-  "@deprecated",
-  "def __repr__",
-  "if 0:",
-  "if __name__ == .__main__.:",
-  "if self.debug:",
-  "if settings.DEBUG",
-  "pragma: no cover",
-  "raise AssertionError",
-  "raise NotImplementedError",
-  "show_plot",
+    "@deprecated",
+    "def __repr__",
+    "if 0:",
+    "if __name__ == .__main__.:",
+    "if self.debug:",
+    "if settings.DEBUG",
+    "if TYPE_CHECKING:",
+    "pragma: no cover",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "show_plot",
 ]
 
 [tool.mypy]
@@ -107,7 +203,8 @@ ignore_missing_imports = true
 [tool.codespell]
 ignore-words-list = """
 titel,alls,ans,nd,mater,nwo,te,hart,ontop,ist,ot,fo,nax,coo,coul,ser,leary,thre,
-fase,rute,reson,titels,ges,scalr,strat,struc,hda,nin,ons,pres,kno,loos,lamda,lew
+fase,rute,reson,titels,ges,scalr,strat,struc,hda,nin,ons,pres,kno,loos,lamda,lew,
+equil,sav
 """
-skip = "pymatgen/analysis/aflow_prototypes.json"
+skip = "pymatgen/analysis/aflow_prototypes.json,*.ipynb"
 check-filenames = true

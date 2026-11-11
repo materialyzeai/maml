@@ -1,9 +1,0 @@
-pytest
-pytest-cov
-coveralls
-mypy
-pydocstyle
-black
-ruff
-megnet
-m3gnet

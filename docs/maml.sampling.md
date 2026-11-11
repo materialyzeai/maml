@@ -54,18 +54,13 @@ Wrapper around selection of K data from each cluster.
 
 Fit the model.
 
-
 * **Parameters**
-
-    * **X** – Input features
-
-
-    * **y** – Target.
+  * **X** – Input features
+  * **y** – Target.
 
 #### transform(clustering_data: dict)
 
 Perform clustering.
 
-
 * **Parameters**
-**clustering_data** – Data to cluster.
+  **clustering_data** – Data to cluster.

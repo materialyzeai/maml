@@ -4,7 +4,7 @@ from maml.sampling.pca import PrincipalComponentAnalysis
 
 
 class TestPrincipalComponentAnalysis:
-    def setup(self):
+    def setup_method(self):
         self.pca_weightedPC = PrincipalComponentAnalysis(weighting_PCs=True)
         self.pca_unweightedPC = PrincipalComponentAnalysis(weighting_PCs=False)
 

@@ -21,5 +21,21 @@ class TestFeatureBatch(unittest.TestCase):
         np.testing.assert_almost_equal(y[0], x[0])
 
 
+def test_stack_padded():
+    x = [np.array([1.0, 2.0, 3.0]), np.array([4.0]), np.array([5.0, 6.0])]
+    y = get_feature_batch("stack_padded")(x)
+    np.testing.assert_allclose(y, [[1, 2, 3], [4, 0, 0], [5, 6, 0]])
+
+
+def test_pandas_concat():
+    import pandas as pd
+
+    dfs = [pd.DataFrame({"a": [1, 2]}), pd.DataFrame({"a": [3]})]
+    out = get_feature_batch("pandas_concat")(dfs)
+    assert out.index.names == ["input_index", None]
+    assert out.xs(1, level="input_index")["a"].tolist() == [3]
+    assert out.xs(0, level="input_index")["a"].tolist() == [1, 2]
+
+
 if __name__ == "__main__":
     unittest.main()

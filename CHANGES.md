@@ -1,5 +1,9 @@
 # Change log
 
+## 2024.6.13
+* Misc bug and doc fixes.
+* Code cleanup.
+
 ## v2023.9.9
 * Added DIRECT sampling approach in `maml.sampling`.
 

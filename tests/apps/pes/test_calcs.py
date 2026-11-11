@@ -7,9 +7,9 @@ import os
 import shutil
 import tempfile
 import unittest
+from shutil import which
 
 import numpy as np
-from shutil import which
 from pymatgen.core import Lattice, Structure
 from sklearn.linear_model import LinearRegression
 
@@ -185,8 +185,9 @@ class ElasticConstantTest(unittest.TestCase):
 
     @unittest.skipIf(not which("lmp_serial"), "No LAMMPS cmd found.")
     def test_calculate(self):
-        calculator = ElasticConstant(ff_settings=self.ff_settings, lattice="fcc", alat=3.506)
-        C11, C12, C44, bulkmodulus = calculator.calculate()
+        calculator = ElasticConstant(ff_settings=self.ff_settings)
+        struct = Structure.from_spacegroup("Fm-3m", Lattice.cubic(3.506), ["Ni"], [[0, 0, 0]])
+        C11, C12, C44, _bulkmodulus = calculator.calculate([struct])[0]
         assert abs(C11 - 276) / 276 < 0.1
         assert abs(C12 - 159) / 159 < 0.1
         assert abs(C44 - 132) / 132 < 0.1
@@ -251,7 +252,7 @@ class NudgedElasticBandTest(unittest.TestCase):
         calculator = NudgedElasticBand(
             ff_settings=self.ff_settings, specie="Ni", lattice="fcc", alat=3.506, lmp_exe="lmp_mpi", num_replicas=3
         )
-        print("NudgedElasticBand using %s" % calculator.LMP_EXE)
+        print(f"NudgedElasticBand using {calculator.LMP_EXE}")
         migration_barrier = calculator.calculate()
         np.testing.assert_almost_equal(migration_barrier, 1.013, decimal=2)
         invalid_calculator = NudgedElasticBand(ff_settings=self.ff_settings, specie="Ni", lattice="sc", alat=3.506)
