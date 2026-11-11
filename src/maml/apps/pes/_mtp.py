@@ -955,44 +955,55 @@ class MTPotential(LammpsPotential):
         return df_orig, df_predict
 
     @staticmethod
-    def from_config(filename, elements, version=None, default_element_ordering=True):
+    def from_config(filename, elements, version=None, default_element_ordering=False):
         """
         Initialize potentials with parameters file.
+
+        An .mtp file stores species as indices 0..species_count-1 without element names, so
+        `elements` must be given in the order the potential was fitted with. MTPotential.train
+        sorts elements by Pauling electronegativity; potentials fitted elsewhere may not.
 
         Args:
             filename (str): The file storing parameters of potentials, filename should
                 ends with ".mtp". Potentials trained by MLIP-2 or MLIP-3 can be read.
-            elements (list): The list of elements.
+            elements (list): The list of elements, in the species order of the potential.
             version (str): The version of mlip package, see MTPotential. Default is "mlip-3".
-            default_element_ordering (bool): If True, elements argument is ordered following the
-                convention of Pauling electronegativity. If False, given order is kept.
+            default_element_ordering (bool): If True, `elements` is reordered by Pauling
+                electronegativity, the order MTPotential.train uses. If False (default), the
+                given order is kept and a warning is emitted when it differs from that order.
 
         Returns:
             MTPotential
 
         Raises:
-            ValueError: If the file contains NaN/inf values or cannot be parsed, or if the number
-                of elements does not match the species_count in the file.
+            ValueError: If the file contains NaN/inf values or cannot be parsed, if `elements`
+                contains duplicates, or if its length does not match species_count in the file.
         """
         param = _load_mtp_param(filename)
+        elements = [str(element) for element in elements]
+        if len(set(elements)) != len(elements):
+            raise ValueError(f"elements contains duplicates: {elements}.")
         num_species = next(
             (int(line.split("=", 1)[1]) for line in param["safe"] if line.strip().startswith("species_count")),
-            -1,
+            None,
         )
-        if len(set(elements)) != num_species:
-            raise ValueError("Inconsistent number of species between the provided .mtp file and the elements argument")
+        if num_species is None:
+            raise ValueError(f"{filename} has no species_count entry.")
+        if len(elements) != num_species:
+            raise ValueError(f"{filename} has species_count = {num_species}, but {len(elements)} elements were given.")
 
         mtp = MTPotential(param=param, version=version)
+        ordered_elements = [str(element) for element in sorted(Element(element) for element in elements)]
         if default_element_ordering:
-            ordered_elements = [str(x) for x in sorted([Element(x) for x in elements])]
-            if elements != ordered_elements:
-                warnings.warn(
-                    f"Order for the elements has been altered from {elements} to {ordered_elements} to ensure "
-                    "consistency with default element ordering in maml during MTP fitting. Change the "
-                    "'default_element_ordering' argument to keep original order.",
-                    ImportWarning,
-                )
-                elements = ordered_elements
+            elements = ordered_elements
+        elif elements != ordered_elements:
+            warnings.warn(
+                f"elements {elements} differ from the order MTPotential.train uses, {ordered_elements} "
+                "(sorted by Pauling electronegativity). The given order is kept, which is correct only if "
+                "the potential was fitted with it. Pass default_element_ordering=True to reorder.",
+                UserWarning,
+                stacklevel=2,
+            )
         mtp.elements = elements
 
         return mtp

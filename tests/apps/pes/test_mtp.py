@@ -116,12 +116,6 @@ class MTPotentialTest(unittest.TestCase):
     def test_from_config(self):
         mtp = MTPotential.from_config(config_file, elements=["Mo"])
         assert mtp.param is not None
-        mtp = MTPotential.from_config(config_file_4, elements=["Nb", "O", "Li", "Cl"])
-        assert mtp.param is not None
-        assert mtp.elements == ["Li", "Nb", "Cl", "O"]
-        mtp = MTPotential.from_config(config_file_4, elements=["Nb", "O", "Li", "Cl"], default_element_ordering=False)
-        assert mtp.param is not None
-        assert mtp.elements == ["Nb", "O", "Li", "Cl"]
 
 
 # ---------------------------------------------------------------------------
@@ -440,6 +434,46 @@ def test_train_missing_fitted_mtp(fake_mlp_bin, train_data):
     with pytest.raises(RuntimeError, match=r"did not write the fitted potential 08g_fitted\.mtp") as excinfo:
         MTPotential(version="mlip-2").train(*train_data)
     assert "something went wrong" in str(excinfo.value)
+
+
+def test_from_config_keeps_order_and_warns():
+    with pytest.warns(UserWarning, match="differ from the order MTPotential.train uses"):
+        mtp = MTPotential.from_config(config_file_4, elements=["Nb", "O", "Li", "Cl"])
+    assert mtp.elements == ["Nb", "O", "Li", "Cl"]
+    assert mtp.param["species_coeffs"] is not None
+
+
+@pytest.mark.parametrize("elements", [["Li", "Nb", "Cl", "O"], ("Li", "Nb", "Cl", "O")])
+def test_from_config_training_order_no_warning(recwarn, elements):
+    mtp = MTPotential.from_config(config_file_4, elements=elements)
+    assert mtp.elements == ["Li", "Nb", "Cl", "O"]
+    assert not [w for w in recwarn if issubclass(w.category, UserWarning)]
+
+
+def test_from_config_default_element_ordering(recwarn):
+    mtp = MTPotential.from_config(config_file_4, elements=["Nb", "O", "Li", "Cl"], default_element_ordering=True)
+    assert mtp.elements == ["Li", "Nb", "Cl", "O"]
+    assert not [w for w in recwarn if issubclass(w.category, UserWarning)]
+
+
+@pytest.mark.parametrize(
+    ("elements", "match"),
+    [
+        (["Li", "Nb", "Cl"], "species_count = 4, but 3 elements"),
+        (["Li", "Li", "Nb", "Cl", "O"], "duplicates"),
+        (["Li", "Li", "Nb", "Cl"], "duplicates"),
+    ],
+)
+def test_from_config_invalid_elements(elements, match):
+    with pytest.raises(ValueError, match=match):
+        MTPotential.from_config(config_file_4, elements=elements)
+
+
+def test_from_config_missing_species_count(in_tmp):
+    text = Path(config_file).read_text()
+    Path("no_count.mtp").write_text("\n".join(line for line in text.splitlines() if "species_count" not in line))
+    with pytest.raises(ValueError, match="no species_count"):
+        MTPotential.from_config("no_count.mtp", elements=["Mo"])
 
 
 def test_from_config_nan(in_tmp):
