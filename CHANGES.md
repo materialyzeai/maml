@@ -9,6 +9,10 @@
   work. The active-learning state of MLIP-3 potentials is kept, so `write_param(extrapolation_control=True, ...)`
   enables extrapolation grading in LAMMPS.
 
+### Bug fixes
+* `MTPotential.evaluate()` works with an MPI build of MLIP-3, which writes `mlp calculate_efs` output to
+  `<output_filename>.0`.
+
 ## v2026.11.12
 
 ### Breaking changes

@@ -759,6 +759,21 @@ def test_evaluate_mlip3(fake_mlp_bin, train_data):
     np.testing.assert_allclose(df_predict[~is_energy]["y_orig"], df_orig[~is_energy]["y_orig"])
 
 
+def test_evaluate_mlip3_mpi_build(fake_mlp_bin, train_data):
+    # An MPI build of MLIP-3 appends the rank to --output_filename (mpi.fnm_ending = ".<rank>").
+    def handler(argv):
+        result = fake_mlp3(argv)
+        if argv[1] == "calculate_efs":
+            Path("predict.cfgs").rename("predict.cfgs.0")
+        return result
+
+    fake_mlp_bin(handler)
+    mtp = MTPotential.from_config(config_file, elements=["Mo"], version="mlip-3")
+    df_orig, df_predict = mtp.evaluate(*train_data)
+    is_energy = df_orig["dtype"] == "energy"
+    np.testing.assert_allclose(df_predict[is_energy]["y_orig"], df_orig[is_energy]["y_orig"] + 3.0, atol=1e-6)
+
+
 def test_from_config_mlip3_trained_file(in_tmp):
     Path("trained.almtp").write_bytes(_mlip3_trained_potential())
     mtp = MTPotential.from_config("trained.almtp", elements=["Mo"], version="mlip-3")

@@ -1117,8 +1117,12 @@ class MTPotential(LammpsPotential):
                 stdout = p.communicate()[0]
                 rc = p.returncode
             _check_returncode("mlp", rc, stdout)
-            if not os.path.exists(predict_file):
-                predict_file = f"{predict_file}_0"
+            # mlip-dev writes predict.cfgs_0. An MPI build of MLIP-3 appends the rank to
+            # --output_filename (predict.cfgs.0); mlp runs here without mpirun, so as a single rank.
+            predict_file = next(
+                (f for f in (predict_file, f"{predict_file}.0", f"{predict_file}_0") if os.path.exists(f)),
+                predict_file,
+            )
             if not os.path.exists(predict_file):
                 # mlp exits with 0 even for unknown commands, e.g. MLIP-2's calc-efs under MLIP-3.
                 raise RuntimeError(
