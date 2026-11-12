@@ -1234,8 +1234,12 @@ def test_real_mlip3_lammps_matches_mlp(in_tmp, notebook_data):
     f_mlp = df_mlp[df_mlp["dtype"] == "force"]["y_orig"].to_numpy().reshape(-1, 3)
 
     energy, lmp_forces, stress = mtp.predict_efs(structure)
+    # Swapped species would give eV-scale errors. The residual (~1e-4 eV/A) comes from the inputs: the
+    # .cfgs file and the LAMMPS data file both store coordinates to 1e-6 A (the latter in a rotated
+    # frame), and mlp prints forces to 1e-6 eV/A.
+    assert np.abs(f_mlp).max() > 0.1
     assert energy == pytest.approx(e_mlp, abs=1e-3)
-    np.testing.assert_allclose(lmp_forces, f_mlp, atol=1e-4)
+    np.testing.assert_allclose(lmp_forces, f_mlp, atol=1e-3)
     assert len(stress) == 6
 
     # Extrapolation control loads the active-learning state kept from training. ScratchDir does not
