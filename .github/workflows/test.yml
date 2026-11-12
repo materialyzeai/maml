@@ -74,7 +74,7 @@ jobs:
 
   mlip3-lammps:
     # End-to-end MTP tests against real MLIP-3 and LAMMPS built with MLIP-3's LAMMPS interface.
-    # Kept out of the main job: its lmp_serial only has the MLIP pair style, so the SNAP/GAP/NNP
+    # Kept out of the main job: its LAMMPS only has the MLIP pair style, so the SNAP/GAP/NNP
     # LAMMPS tests would fail there.
     runs-on: ubuntu-latest
     env:
@@ -98,30 +98,33 @@ jobs:
       uses: actions/cache@v4
       with:
         path: ~/mlip3-bin
-        key: mlip3-lammps-${{ runner.os }}-${{ env.MLIP3_COMMIT }}-${{ env.MLIP3_LAMMPS_COMMIT }}-${{ env.LAMMPS_TAG }}
-    - name: Build MLIP-3 and LAMMPS with the MLIP-3 interface (serial)
-      if: steps.cache-mlip3-lammps.outputs.cache-hit != 'true'
+        key: mlip3-lammps-mpi-${{ runner.os }}-${{ env.MLIP3_COMMIT }}-${{ env.MLIP3_LAMMPS_COMMIT }}-${{ env.LAMMPS_TAG }}
+    - name: Install OpenMPI
       run: |
-        command -v gfortran || (sudo apt-get update && sudo apt-get install -y gfortran)
+        sudo apt-get update && sudo apt-get install -y gfortran libopenmpi-dev openmpi-bin
+    - name: Build MLIP-3 and LAMMPS with the MLIP-3 interface (MPI)
+      if: steps.cache-mlip3-lammps.outputs.cache-hit != 'true'
+      # MPI rather than serial: with --no-mpi, lib_mlip_interface.a bundles MLIP's own MPI stubs, which clash
+      # at link time with LAMMPS's STUBS library and use incompatible MPI_Datatype codes.
+      run: |
         build="$RUNNER_TEMP/mlip3-build"
         mkdir -p "$build" "$HOME/mlip3-bin"
         git clone https://gitlab.com/ashapeev/mlip-3.git "$build/mlip-3"
         git -C "$build/mlip-3" checkout "$MLIP3_COMMIT"
-        (cd "$build/mlip-3" && ./configure --no-mpi --blas=embedded && make -j4 mlp libinterface)
+        (cd "$build/mlip-3" && ./configure --compiler=gnu --blas=embedded && make -j4 mlp libinterface)
         git clone https://gitlab.com/ivannovikov/interface-lammps-mlip-3.git "$build/interface"
         git -C "$build/interface" checkout "$MLIP3_LAMMPS_COMMIT"
         git clone --depth 1 -b "$LAMMPS_TAG" https://github.com/lammps/lammps.git "$build/lammps"
         cp "$build/mlip-3/lib/lib_mlip_interface.a" "$build/interface/"
         (cd "$build/interface" && sh ./preinstall.sh "$build/lammps")
-        make -C "$build/lammps/src" mpi-stubs
-        make -C "$build/lammps/src" -j4 serial
-        cp "$build/mlip-3/bin/mlp" "$build/lammps/src/lmp_serial" "$HOME/mlip3-bin/"
+        make -C "$build/lammps/src" -j4 mpi
+        cp "$build/mlip-3/bin/mlp" "$build/lammps/src/lmp_mpi" "$HOME/mlip3-bin/"
     - name: Add MLIP-3 and LAMMPS to PATH
       run: |
         echo "$HOME/mlip3-bin" >> "$GITHUB_PATH"
         "$HOME/mlip3-bin/mlp" list | head -3
         # Fails if the interface was not compiled in (LAMMPS only warns about an unknown package).
-        "$HOME/mlip3-bin/lmp_serial" -h | grep -qw mlip
+        "$HOME/mlip3-bin/lmp_mpi" -h | grep -qw mlip
     - name: pytest
       run: |
         uv run pytest tests/apps/pes/test_mtp.py -rs

@@ -1055,6 +1055,15 @@ def test_write_param_mlip3_no_param():
         MTPotential(version="mlip-3").write_param()
 
 
+def test_write_param_mlip3_no_elements(in_tmp):
+    mtp = MTPotential(param=_load_mtp_param(config_file), version="mlip-3")
+    with pytest.raises(ValueError, match="No species given"):
+        mtp.lammps_elements()
+    with pytest.raises(ValueError, match="No species given"):
+        mtp.write_param()
+    assert not Path("fitted.mtp").exists()
+
+
 @pytest.mark.parametrize(
     ("make_mtp", "species_elements"),
     [
