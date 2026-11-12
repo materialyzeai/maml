@@ -12,7 +12,12 @@
 
 ### New features
 * `MatGLStructure` and `MatGLSite` describers for MatGL foundation models.
-* `MTPotential` supports MLIP-3 for `train()` and `evaluate()`. MLIP-3's LAMMPS interface is not yet supported. (#728)
+* `MTPotential` supports MLIP-3 for `train()` and `evaluate()`. (#728)
+* `MTPotential` supports MLIP-3's LAMMPS interface (`interface-lammps-mlip-3`). With `version="mlip-3"`,
+  `write_param()` returns `pair_style mlip load_from=... [key=value ...]` and writes the potential with its species
+  relabelled to maml's LAMMPS atom type order (`lammps_elements()`), so `predict_efs()` and the LAMMPS calculators
+  work. The active-learning state of MLIP-3 potentials is kept, so `write_param(extrapolation_control=True, ...)`
+  enables extrapolation grading in LAMMPS.
 * `MTPotential.train()` with MLIP-3 writes atomic numbers as atom types, so the fitted potential records its
   elements. `MTPotential.from_config()` reads them from the file and `elements` becomes optional. (#618)
 * `MTPotential.from_config()` validates `elements` against `species_count`, rejects duplicates and warns when the
