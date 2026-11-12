@@ -264,15 +264,15 @@ Bases: `object`
 
 Perturbation class for determining the standard lattice.
 
-#### *property* abc(     *: list[float* )
+#### *property* abc(      *: list[float* )
 
 Returns the lattice lengths.
 
-#### *property* fit_lattice(     *: boo* )
+#### *property* fit_lattice(      *: boo* )
 
 Returns whether the lattice fits any crystal system.
 
-#### *property* lattice(     *: Lattic* )
+#### *property* lattice(      *: Lattic* )
 
 Returns the lattice.
 
@@ -449,7 +449,7 @@ Holds the perturbations of coordinates/lattice (x_wyckoff/x_lattice)
 – formation energy (Y). Allows for constant-time appends while
 ensuring no duplicates are added.
 
-#### *property* bounds(     *: ndarra* )
+#### *property* bounds(      *: ndarra* )
 
 Returns the search space of parameters.
 
@@ -460,7 +460,7 @@ Latin hypercube sampling.
 * **Parameters**
   **n_intervals** (*int*) – Number of intervals.
 
-#### *property* params(     *: ndarra* )
+#### *property* params(      *: ndarra* )
 
 Returns the parameters in target space.
 
@@ -489,7 +489,7 @@ lattice perturbation/volume perturbation.
 
 Empty the param, target of the space.
 
-#### *property* target(     *: ndarra* )
+#### *property* target(      *: ndarra* )
 
 Returns the target (i.e., formation energy) in target space.
 

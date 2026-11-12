@@ -445,7 +445,7 @@ Method to convert a list of docs into objects, e.g.,
 Structure and DataFrame.
 
 * **Parameters**
-  * **docs** (     *[**dict**]*) – List of docs. Each doc should have the same
+  * **docs** (      *[**dict**]*) – List of docs. Each doc should have the same
     format as one returned from .dft.parse_dir.
   * **include_stress** (*bool*) – Whether to include stress components.
   * **\*\*kwargs** – Passthrough.
@@ -541,10 +541,10 @@ Method to convert structures and their properties in to
 datapool format.
 
 * **Parameters**
-  * **structures** (     *[**Structure**]*) – The list of Pymatgen Structure object.
-  * **energies** (     *[**float**]*) – The list of total energies of each structure
+  * **structures** (      *[**Structure**]*) – The list of Pymatgen Structure object.
+  * **energies** (      *[**float**]*) – The list of total energies of each structure
     in structures list.
-  * **forces** (     *[**np.array**]*) – List of (m, 3) forces array of each structure
+  * **forces** (      *[**np.array**]*) – List of (m, 3) forces array of each structure
     with m atoms in structures list. m can be varied with each
     single structure case.
   * **stresses** (*list*) – List of (6, ) virial stresses of each
@@ -660,7 +660,7 @@ Method to convert a list of docs into objects, e.g.,
 Structure and DataFrame.
 
 * **Parameters**
-  * **docs** (     *[**dict**]*) – List of docs. Each doc should have the same
+  * **docs** (      *[**dict**]*) – List of docs. Each doc should have the same
     format as one returned from .dft.parse_dir.
   * **include_stress** (*bool*) – Whether to include stress components.
   * **\*\*kwargs** – Passthrough.
@@ -692,10 +692,10 @@ Method to convert structures and their properties in to
 datapool format.
 
 * **Parameters**
-  * **structures** (     *[**Structure**]*) – The list of Pymatgen Structure object.
-  * **energies** (     *[**float**]*) – The list of total energies of each structure
+  * **structures** (      *[**Structure**]*) – The list of Pymatgen Structure object.
+  * **energies** (      *[**float**]*) – The list of total energies of each structure
     in structures list.
-  * **forces** (     *[**np.array**]*) – List of (m, 3) forces array of each structure
+  * **forces** (      *[**np.array**]*) – List of (m, 3) forces array of each structure
     with m atoms in structures list. m can be varied with each
     single structure case.
   * **stresses** (*list*) – List of (6, ) virial stresses of each
@@ -1358,7 +1358,7 @@ The way it works is as follows:
 
 #### SCR_LINK(_ = ‘scratch_link_ )
 
-#### tempdirs(     *: list[str* )
+#### tempdirs(      *: list[str* )
 
 ### maml.utils._tempfile._copy_r_with_suffix(src: str, dst: str, suffix: Any | None = None)
 

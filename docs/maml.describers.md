@@ -20,11 +20,9 @@ Reference:
 @article{behler2007generalized,
 
 > title={Generalized neural-network representation of
-
 > ```none
 > high-dimensional potential-energy surfaces},
 > ```
-
 > author={Behler, J{“o}rg and Parrinello, Michele},
 > journal={Physical review letters},
 > volume={98},
@@ -62,17 +60,13 @@ Reference:
 @article{bartok2010gaussian,
 
 > title={Gaussian approximation potentials: The
-
 > ```none
 > accuracy of quantum mechanics, without the electrons},
 > ```
-
 > author={Bart{‘o}k, Albert P and Payne, Mike C
-
 > ```none
 > and Kondor, Risi and Cs{'a}nyi, G{'a}bor},
 > ```
-
 > journal={Physical review letters},
 > volume={104}, number={13}, pages={136403}, year={2010}, publisher={APS}}
 
@@ -82,11 +76,11 @@ Reference:
 
 ### describer_type(_ = ‘site_ )
 
-### *property* feature_dim(     *: int | Non* )
+### *property* feature_dim(      *: int | Non* )
 
 Bispectrum feature dimension.
 
-### *property* subscripts(     *: lis* )
+### *property* subscripts(      *: lis* )
 
 The subscripts (2j1, 2j2, 2j) of all bispectrum components
 involved.
@@ -106,17 +100,13 @@ Reference:
 @article{rupp2012fast,
 
 > title={Fast and accurate modeling of molecular
-
 > ```none
 > atomization energies with machine learning},
 > ```
-
 > author={Rupp, Matthias and Tkatchenko, Alexandre and M{“u}ller,
-
 > ```none
 > Klaus-Robert and Von Lilienfeld, O Anatole},
 > ```
-
 > journal={Physical review letters}, volume={108},
 > number={5}, pages={058301},
 > year={2012}, publisher={APS}}
@@ -144,17 +134,13 @@ Reference:
 @article{rupp2012fast,
 
 > title={Fast and accurate modeling of molecular
-
 > ```none
 > atomization energies with machine learning},
 > ```
-
 > author={Rupp, Matthias and Tkatchenko, Alexandre and M{“u}ller,
-
 > ```none
 > Klaus-Robert and Von Lilienfeld, O Anatole},
 > ```
-
 > journal={Physical review letters}, volume={108},
 > number={5}, pages={058301},
 > year={2012}, publisher={APS}}
@@ -204,7 +190,6 @@ Reference:
 
 > title={Deep neural networks for accurate predictions of crystal stability},
 > author={Ye, Weike and Chen, Chi and Wang, Zhenbin and
-
 > > Chu, Iek-Heng and Ong, Shyue Ping},
 > > journal={Nature communications},
 > > volume={9},
@@ -392,7 +377,6 @@ Reference:
 > ```none
 > Zheng, Chen and Ong, Shyue Ping},
 > ```
-
 > journal={Chemistry of Materials}, volume={31}, number={9},
 > pages={3564–3572}, year={2019},publisher={ACS Publications}}
 
@@ -438,7 +422,6 @@ Reference:
 > ```none
 > Zheng, Chen and Ong, Shyue Ping},
 > ```
-
 > journal={Chemistry of Materials}, volume={31}, number={9},
 > pages={3564–3572}, year={2019},publisher={ACS Publications}}
 
@@ -521,19 +504,15 @@ Reference:
 @article{montavon2013machine,
 
 > title={Machine learning of molecular electronic properties
-
 > ```none
 > in chemical compound space},
 > ```
-
 > author={Montavon, Gr{‘e}goire and Rupp, Matthias and Gobre,
-
 > ```none
 > Vivekanand and Vazquez-Mayagoitia, Alvaro and Hansen, Katja
 > and Tkatchenko, Alexandre and M{"u}ller, Klaus-Robert and
 > Von Lilienfeld, O Anatole},
 > ```
-
 > journal={New Journal of Physics},
 > volume={15}, number={9},pages={095003},
 > year={2013},publisher={IOP Publishing}}
@@ -634,19 +613,15 @@ Reference:
 @inproceedings{montavon2012learning,
 
 > title={Learning invariant representations
-
 > ```none
 > of molecules for atomization energy prediction},
 > ```
-
 > author={Montavon, Gr{‘e}goire and Hansen, Katja
-
 > ```none
 > and Fazli, Siamac and Rupp, Matthias and Biegler,
 > Franziska and Ziehe, Andreas and Tkatchenko, Alexandre
 > and Lilienfeld, Anatole V and M{"u}ller, Klaus-Robert},
 > ```
-
 > booktitle={Advances in neural information processing systems},
 > pages={440–448}, year={2012}}
 
@@ -828,7 +803,6 @@ Reference:
 > ```none
 > Zheng, Chen and Ong, Shyue Ping},
 > ```
-
 > journal={Chemistry of Materials}, volume={31}, number={9},
 > pages={3564–3572}, year={2019},publisher={ACS Publications}}
 
@@ -874,7 +848,6 @@ Reference:
 > ```none
 > Zheng, Chen and Ong, Shyue Ping},
 > ```
-
 > journal={Chemistry of Materials}, volume={31}, number={9},
 > pages={3564–3572}, year={2019},publisher={ACS Publications}}
 
@@ -999,11 +972,9 @@ Reference:
 @article{behler2007generalized,
 
 > title={Generalized neural-network representation of
-
 > ```none
 > high-dimensional potential-energy surfaces},
 > ```
-
 > author={Behler, J{“o}rg and Parrinello, Michele},
 > journal={Physical review letters},
 > volume={98},
@@ -1041,17 +1012,13 @@ Reference:
 @article{bartok2010gaussian,
 
 > title={Gaussian approximation potentials: The
-
 > ```none
 > accuracy of quantum mechanics, without the electrons},
 > ```
-
 > author={Bart{‘o}k, Albert P and Payne, Mike C
-
 > ```none
 > and Kondor, Risi and Cs{'a}nyi, G{'a}bor},
 > ```
-
 > journal={Physical review letters},
 > volume={104}, number={13}, pages={136403}, year={2010}, publisher={APS}}
 
@@ -1061,11 +1028,11 @@ Reference:
 
 #### describer_type(_ = ‘site_ )
 
-#### *property* feature_dim(     *: int | Non* )
+#### *property* feature_dim(      *: int | Non* )
 
 Bispectrum feature dimension.
 
-#### *property* subscripts(     *: lis* )
+#### *property* subscripts(      *: lis* )
 
 The subscripts (2j1, 2j2, 2j) of all bispectrum components
 involved.
@@ -1089,7 +1056,6 @@ Reference:
 > ```none
 > Zheng, Chen and Ong, Shyue Ping},
 > ```
-
 > journal={Chemistry of Materials}, volume={31}, number={9},
 > pages={3564–3572}, year={2019},publisher={ACS Publications}}
 
@@ -1180,17 +1146,13 @@ Reference:
 @article{rupp2012fast,
 
 > title={Fast and accurate modeling of molecular
-
 > ```none
 > atomization energies with machine learning},
 > ```
-
 > author={Rupp, Matthias and Tkatchenko, Alexandre and M{“u}ller,
-
 > ```none
 > Klaus-Robert and Von Lilienfeld, O Anatole},
 > ```
-
 > journal={Physical review letters}, volume={108},
 > number={5}, pages={058301},
 > year={2012}, publisher={APS}}
@@ -1218,17 +1180,13 @@ Reference:
 @article{rupp2012fast,
 
 > title={Fast and accurate modeling of molecular
-
 > ```none
 > atomization energies with machine learning},
 > ```
-
 > author={Rupp, Matthias and Tkatchenko, Alexandre and M{“u}ller,
-
 > ```none
 > Klaus-Robert and Von Lilienfeld, O Anatole},
 > ```
-
 > journal={Physical review letters}, volume={108},
 > number={5}, pages={058301},
 > year={2012}, publisher={APS}}
@@ -1278,7 +1236,6 @@ Reference:
 
 > title={Deep neural networks for accurate predictions of crystal stability},
 > author={Ye, Weike and Chen, Chi and Wang, Zhenbin and
-
 > > Chu, Iek-Heng and Ong, Shyue Ping},
 > > journal={Nature communications},
 > > volume={9},
@@ -1312,19 +1269,15 @@ Reference:
 @article{montavon2013machine,
 
 > title={Machine learning of molecular electronic properties
-
 > ```none
 > in chemical compound space},
 > ```
-
 > author={Montavon, Gr{‘e}goire and Rupp, Matthias and Gobre,
-
 > ```none
 > Vivekanand and Vazquez-Mayagoitia, Alvaro and Hansen, Katja
 > and Tkatchenko, Alexandre and M{"u}ller, Klaus-Robert and
 > Von Lilienfeld, O Anatole},
 > ```
-
 > journal={New Journal of Physics},
 > volume={15}, number={9},pages={095003},
 > year={2013},publisher={IOP Publishing}}
@@ -1371,19 +1324,15 @@ Reference:
 @inproceedings{montavon2012learning,
 
 > title={Learning invariant representations
-
 > ```none
 > of molecules for atomization energy prediction},
 > ```
-
 > author={Montavon, Gr{‘e}goire and Hansen, Katja
-
 > ```none
 > and Fazli, Siamac and Rupp, Matthias and Biegler,
 > Franziska and Ziehe, Andreas and Tkatchenko, Alexandre
 > and Lilienfeld, Anatole V and M{"u}ller, Klaus-Robert},
 > ```
-
 > booktitle={Advances in neural information processing systems},
 > pages={440–448}, year={2012}}
 

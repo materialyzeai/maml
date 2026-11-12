@@ -174,7 +174,7 @@ A thin wrapper of sklearn Pipeline.
 
 ### *abc_impl(* = <_abc.*abc_data object* )
 
-### steps(     *: List[Any* )
+### steps(      *: List[Any* )
 
 ## *class* maml.base.TargetScalerMixin(\*args, \*\*kwargs)
 
@@ -329,7 +329,7 @@ A thin wrapper of sklearn Pipeline.
 
 #### *abc_impl(* = <_abc.*abc_data object* )
 
-#### steps(     *: List[Any* )
+#### steps(      *: List[Any* )
 
 ### maml.base._describer._transform_one(describer: BaseDescriber, obj: Any)
 
