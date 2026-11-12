@@ -46,7 +46,7 @@ Dict representation of the GBond class.
 * **Return type**
   dict of {“loc_algo”
 
-#### *property* bond_matrix(    *: ndarra* )
+#### *property* bond_matrix(     *: ndarra* )
 
 The (padded) bond matrix.
 
@@ -86,11 +86,11 @@ Function to calculate the mean bond length difference between GB and the bulk
 
 Returns: the mean_bl_chg
 
-#### *property* max_bl(    *: floa* )
+#### *property* max_bl(     *: floa* )
 
 The maximum bond length.
 
-#### *property* min_bl(    *: floa* )
+#### *property* min_bl(     *: floa* )
 
 The minimum bond length.
 
@@ -128,6 +128,7 @@ Describe gb with selected structural and elemental features
 :param inc_bulk_ref: whether to generate bulk reference
 
 > bulk reference: i.e. the entry of the origin bulk of the GB,
+
 > ```none
 > the rotation angle (theta) = 0, gb_energy = 0
 > ```

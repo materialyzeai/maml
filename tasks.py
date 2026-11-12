@@ -1,20 +1,25 @@
 """
 Pyinvoke tasks.py file for automating releases and admin stuff.
 
+Run with the maintain dependency group, which has invoke and the Sphinx tools:
+
+    uv run --group maintain invoke release
+
 Author: Shyue Ping Ong
 """
 
 from __future__ import annotations
 
-import datetime
+import datetime as dt
 import glob
-import json
-import os
 import re
+import tempfile
+from contextlib import chdir
+from pathlib import Path
 
-import requests
 from invoke import task
-from monty.os import cd
+
+REPO = "materialyzeai/maml"
 
 
 @task
@@ -22,16 +27,16 @@ def make_docs(ctx):
     """
     Generate API documentation + run Sphinx.
 
-    :param ctx:
+    Args:
+        ctx: Invoke context.
     """
-
-    with cd("docs"):
-        ctx.run("rm maml.*.rst", warn=True)
-        ctx.run("touch index.rst", warn=True)
+    with chdir("docs"):
+        ctx.run("rm -f maml.*.rst")
+        ctx.run("touch index.rst")
         ctx.run("sphinx-apidoc -P -M -d 6 -o . -f ../src/maml")
-        ctx.run("rm maml*.tests.*rst", warn=True)
+        ctx.run("rm -f maml*.tests.*rst")
         ctx.run("sphinx-build -M markdown . .")
-        ctx.run("rm *.rst", warn=True)
+        ctx.run("rm -f *.rst")
         ctx.run("cp markdown/maml*.md .")
         for fn in glob.glob("maml*.md"):
             with open(fn) as f:
@@ -43,10 +48,10 @@ def make_docs(ctx):
             with open(fn, "w") as f:
                 f.write("\n".join(preamble + lines))
 
-        ctx.run("rm -r markdown", warn=True)
+        ctx.run("rm -rf markdown")
         ctx.run("cp ../*.md .")
         ctx.run("mv README.md index.md")
-        ctx.run("rm -rf *.orig doctrees", warn=True)
+        ctx.run("rm -rf *.orig doctrees")
 
         with open("index.md") as f:
             contents = f.read()
@@ -64,73 +69,95 @@ def make_docs(ctx):
 @task
 def update_docs(ctx):
     """
-    Update the web documentation.
+    Regenerate the docs and push them.
 
-    :param ctx:
+    Args:
+        ctx: Invoke context.
     """
-    ctx.run("cp README.rst docs/")
-    ctx.run("cp api-docs-source/conf.py docs/conf.py")
     make_docs(ctx)
-    ctx.run("git add .")
-    ctx.run('git commit -a -m "Update docs"')
+    ctx.run("git add docs")
+    ctx.run('git commit -m "Update docs"')
     ctx.run("git push")
 
 
 @task
 def publish(ctx):
     """
-    Upload release to Pypi using twine.
+    Build and upload to PyPI from this machine. Normally not needed: publishing a GitHub release
+    (see `release`) makes CI test, build and publish to PyPI with trusted publishing.
 
-    :param ctx:
+    Args:
+        ctx: Invoke context.
     """
-    ctx.run("rm dist/*.*", warn=True)
-    ctx.run("python -m build")
-    ctx.run("twine upload dist/*")
+    ctx.run("rm -rf dist")
+    ctx.run("uv build")
+    ctx.run("uv publish")
 
 
 @task
 def set_ver(ctx, version):
-    lines = []
-    with open("pyproject.toml") as f:
-        for l in f:
-            lines.append(re.sub(r"^version = ([^,]+)", f'version = "{version}"', l.rstrip()))
-    with open("pyproject.toml", "w") as f:
-        f.write("\n".join(lines) + "\n")
+    """
+    Set the version in pyproject.toml and update uv.lock.
+
+    Args:
+        ctx: Invoke context.
+        version (str): New version, e.g. "2026.11.12".
+    """
+    path = Path("pyproject.toml")
+    text, count = re.subn(r'^version = "[^"]*"', f'version = "{version}"', path.read_text(), count=1, flags=re.M)
+    if count != 1:
+        raise ValueError("No version line found in pyproject.toml.")
+    path.write_text(text)
+    ctx.run("uv lock")
+
+
+def release_notes(version: str, changelog: str = "CHANGES.md") -> str:
+    """
+    Get the release notes for a version from the changelog.
+
+    Args:
+        version (str): Version, e.g. "2026.11.12".
+        changelog (str): Changelog with one "## v<version>" (or "## <version>") section per release.
+
+    Returns:
+        str: The body of the section.
+
+    Raises:
+        ValueError: If the changelog has no section for the version.
+    """
+    text = Path(changelog).read_text()
+    match = re.search(rf"^## v?{re.escape(version)}[ \t]*\n(.*?)(?=^## |\Z)", text, flags=re.M | re.S)
+    if not match or not match.group(1).strip():
+        raise ValueError(f"{changelog} has no '## v{version}' section. Add the release notes first.")
+    return match.group(1).strip()
 
 
 @task
-def release(ctx, version=datetime.datetime.now().strftime("%Y.%-m.%-d"), notest=True, nodoc=False):
-    set_ver(ctx, version=version)
-    ctx.run("rm -r dist build maml.egg-info", warn=True)
+def release(ctx, version=None, notest=True, nodoc=False):
+    """
+    Release a new version: set the version, regenerate the docs, commit and push, then create the
+    GitHub release. Publishing the release makes CI run the tests and publish to PyPI.
+
+    Args:
+        ctx: Invoke context.
+        version (str): Version to release. Defaults to today's date, e.g. "2026.11.12".
+        notest (bool): Skip running the tests locally first. CI runs them before publishing.
+        nodoc (bool): Skip regenerating the docs.
+    """
+    version = version or dt.datetime.now().strftime("%Y.%-m.%-d")
+    notes = release_notes(version)
     if not notest:
-        ctx.run("pytest maml")
-    with open("CHANGES.md") as f:
-        contents = f.read()
-    toks = re.split(r"\-+", contents)
-    desc = toks[1].strip()
-    toks = desc.split("\n")
-    desc = "\n".join(toks[:-1]).strip()
+        ctx.run("uv run pytest tests")
+    set_ver(ctx, version=version)
     if not nodoc:
         make_docs(ctx)
-        ctx.run("git add .")
-        ctx.run('git commit -a -m "Update docs"')
-        ctx.run("git push")
+    ctx.run("git add pyproject.toml uv.lock CHANGES.md docs")
+    ctx.run(f'git commit -m "Release v{version}"')
+    ctx.run("git push")
 
-    payload = {
-        "tag_name": "v" + version,
-        "target_commitish": "master",
-        "name": "v" + version,
-        "body": desc,
-        "draft": False,
-        "prerelease": False,
-    }
-    response = requests.post(
-        "https://api.github.com/repos/materialsvirtuallab/maml/releases",
-        data=json.dumps(payload),
-        headers={"Authorization": "token " + os.environ["GITHUB_RELEASES_TOKEN"]},
+    with tempfile.NamedTemporaryFile("w", suffix=".md", delete=False) as f:
+        f.write(notes)
+    ctx.run(
+        f"gh release create v{version} --repo {REPO} --target main --title v{version} --notes-file {f.name}",
     )
-    print(response.text)
-    ctx.run("rm -f dist/*.*", warn=True)
-    ctx.run("python -m build", warn=True)
-    ctx.run("twine upload --skip-existing dist/*.whl", warn=True)
-    ctx.run("twine upload --skip-existing dist/*.tar.gz", warn=True)
+    Path(f.name).unlink()

@@ -119,10 +119,10 @@ Evaluate energies, forces and stresses of structures with trained
 interatomic potentials.
 
 * **Parameters**
-  * **test_structures** (    *[**Structure**]*) – List of Pymatgen Structure Objects.
-  * **test_energies** (    *[**float**]*) – List of DFT-calculated total energies of
+  * **test_structures** (     *[**Structure**]*) – List of Pymatgen Structure Objects.
+  * **test_energies** (     *[**float**]*) – List of DFT-calculated total energies of
     each structure in structures list.
-  * **test_forces** (    *[**np.array**]*) – List of DFT-calculated (m, 3) forces of
+  * **test_forces** (     *[**np.array**]*) – List of DFT-calculated (m, 3) forces of
     each structure with m atoms in structures list. m can be varied
     with each single structure case.
   * **test_stresses** (*list*) – List of DFT-calculated (6, ) viriral stresses
@@ -167,12 +167,12 @@ Save parameters of the potentials.
 Training data with gaussian process regression.
 
 * **Parameters**
-  * **train_structures** (    *[**Structure**]*) – The list of Pymatgen Structure object.
+  * **train_structures** (     *[**Structure**]*) – The list of Pymatgen Structure object.
     energies ([float]): The list of total energies of each structure
     in structures list.
-  * **train_energies** (    *[**float**]*) – List of total energies of each structure in
+  * **train_energies** (     *[**float**]*) – List of total energies of each structure in
     structures list.
-  * **train_forces** (    *[**np.array**]*) – List of (m, 3) forces array of each structure
+  * **train_forces** (     *[**np.array**]*) – List of (m, 3) forces array of each structure
     with m atoms in structures list. m can be varied with each
     single structure case.
   * **train_stresses** (*list*) – List of (6, ) virial stresses of each
@@ -338,7 +338,7 @@ Lattice Constant Relaxation Calculator.
 Calculate the relaxed lattice parameters of a list of structures.
 
 * **Parameters**
-  **structures** (    *[**Structure**]*) – Input structures in a list.
+  **structures** (     *[**Structure**]*) – Input structures in a list.
 * **Returns**
   List of relaxed lattice constants (a, b, c in Å) of the input structures.
 
@@ -370,10 +370,10 @@ Evaluate energies, forces and stresses of structures with trained
 interatomic potentials.
 
 * **Parameters**
-  * **test_structures** (    *[**Structure**]*) – List of Pymatgen Structure Objects.
-  * **test_energies** (    *[**float**]*) – List of DFT-calculated total energies of
+  * **test_structures** (     *[**Structure**]*) – List of Pymatgen Structure Objects.
+  * **test_energies** (     *[**float**]*) – List of DFT-calculated total energies of
     each structure in structures list.
-  * **test_forces** (    *[**np.array**]*) – List of DFT-calculated (m, 3) forces of
+  * **test_forces** (     *[**np.array**]*) – List of DFT-calculated (m, 3) forces of
     each structure with m atoms in structures list. m can be varied
     with each single structure case.
   * **test_stresses** (*list*) – List of DFT-calculated (6, ) viriral stresses
@@ -405,12 +405,12 @@ Initialize potentials with parameters file.
 Training data with moment tensor method.
 
 * **Parameters**
-  * **train_structures** (    *[**Structure**]*) – The list of Pymatgen Structure object.
+  * **train_structures** (     *[**Structure**]*) – The list of Pymatgen Structure object.
     energies ([float]): The list of total energies of each structure
     in structures list.
-  * **train_energies** (    *[**float**]*) – List of total energies of each structure in
+  * **train_energies** (     *[**float**]*) – List of total energies of each structure in
     structures list.
-  * **train_forces** (    *[**np.array**]*) – List of (m, 3) forces array of each structure
+  * **train_forces** (     *[**np.array**]*) – List of (m, 3) forces array of each structure
     with m atoms in structures list. m can be varied with each single
     structure case.
   * **train_stresses** (*list*) – List of (6, ) virial stresses of each structure
@@ -495,14 +495,19 @@ select_log (str): Name of file (or standard output stream stdout/stderr) for
 > 0: If Ab-initio models is not required.
 > 1: Used if driver provides EFS data with configurations.
 > 2: Use embedded Lennard-Jones pair potentials.
+
 > > r_min (float): Distance to minimum of pair function (in Angstroms).
+
 > > ```none
 > > Default to 2.0.
 > > ```
+
 > > scale (float): Value of pair function in minimum (in eV).
+
 > > ```none
 > > Default to 1.0.
 > > ```
+
 > > cutoff (float): Cutoff radius (in Angstroms). Default to 5.0.
 > > 3: Use DFT models by VASP. Linking via files exchange.
 > > POSCAR (str): Relative path of POSCAR file.
@@ -520,95 +525,137 @@ MLIP (str): MTP.
 > load_from (str): Potential filename.
 > Cacluate_EFS (bool): Whether to perform EFS calculation by MTP.
 > Fit (bool): Whether to perform MTP learning.
+
 > > Save (str): Output MTP file name (for trained MTP).
 > > Energy_equation_weight (float): Weight for energy equation in
+
 > > > fitting procedure. Default to 1.0.
 > > > Forces_equation_weight (float): Weight for forces equations in
 > > ```none
 > > fitting procedure. Default to 0.001.
 > > ```
+
 > > Stress_equation_weight (float): Weight for stresses equations in
+
 > > ```none
 > > fitting procedure.  Default to 0.1.
 > > ```
+
 > > Relative_forces_weight (float): If greater than zero, large forces
+
 > > ```none
 > > will be fitted less accurate than small. Default to 0.0.
 > > ```
+
 > > Fit_log (str): File to write fitting log. No logging if not specified.
+
 > > ```none
 > > Default to None.
 > > ```
+
 > Select (bool): Whether to activate active learning. Default to False.
+
 > > Site_E_weight (float): Weight for site energy equations in
+
 > > ```none
 > > selection procedure. Default to 1.0.
 > > ```
+
 > > Energy_weight (float): Weight for energy equation in
+
 > > ```none
 > > selection procedure. Default to 0.0.
 > > ```
+
 > > Forces_weight (float): Weight for forces equations in
+
 > > ```none
 > > selection procedure. Default to 0.0.
 > > ```
+
 > > Stress_weight (float): Weight for stresses equations in
+
 > > ```none
 > > selection procedure. Default to 0.0.
 > > ```
+
 > > Threshold_slct (float): Selection threshold - maximum
+
 > > ```none
 > > allowed extrapolation level. Default to 0.1.
 > > ```
+
 > > Save_TS (str): Filename where selected configurations
+
 > > ```none
 > > will be saved. No configuration saving if not specified.
 > > Default to None.
 > > ```
+
 > > Save_state (str): Filename where state of the selection
+
 > > ```none
 > > will be saved. No saving if not specified. Default to None.
 > > ```
+
 > > Load_state (str): Filename where state of the selection
+
 > > ```none
 > > will be loaded. No saving if not specified. Default to None.
 > > ```
+
 > > Select_log (str): File to write fitting log. No logging
+
 > > ```none
 > > if not specified. Default to None.
 > > ```
+
 > LOFT (bool): Whether to perform learning on the fly. Default to False
+
 > > EFSviaMTP (bool): Works only on LOFT regime. If True,
+
 > > ```none
 > > only MTP-calculated EFS will be passed to driver, else
 > > pass to driver ab-initio EFS while LOTF when learning occurs.
 > > ```
+
 > > Log (str): Filename to write log of learning on the fly process.
+
 > > ```none
 > > No logging if not specified. Default to None.
 > > ```
+
 > Check_errors (bool): If True, comparison and accumulation of
+
 > ```none
 > error statistics for EFS calculated by ab-initio models and MTP.
 > Default to False.
 > ```
+
 > ```none
 > Log (str): Filename to write log of learning on the fly process.
 > ```
+
 > ```none
 >     No logging if not specified. Default to None.
 > ```
+
 > Write_cfgs (bool): File for writing all processed configurations.
+
 > ```none
 > No configuration recording if not specified. Default to None.
 > ```
+
 > ```none
 > Skip_N (int): The number of configurations to skip while writing.
 > ```
+
 > ```none
 >     Default to 0.
 > ```
+
 > Log (str): Filename to write MLIP log. No logging if not specified.
+
 > ```none
 > Default to None.
 > ```
@@ -617,56 +664,78 @@ Driver (int): Defines the configuration driver. Default to 1.
 
 > 0: No driver or external MD driver.
 > 1: Read configurations from database file.
+
 > > Database_filename (str): Configuration file name.
 > > Max_count (int): Maximal number of configurations to read.
 > > Log (str): Filename to write reading log. No logging
+
 > > > if not specified. Default to None.
 > > > 2: Embedded algorithm for relaxation.
 > > > Pressure (float): External pressure (in GPa).
 > > ```none
 > > If not zero enthalpy is minimized. Default to 0.0.
 > > ```
+
 > > Iteration_limit (int): Maximal number of iteration of
+
 > > ```none
 > > the relaxation process. Default to 500.
 > > ```
+
 > > Min_dist (float): Minimal interatomic distance constraint
+
 > > ```none
 > > (in Angstroms). Default to 1.0.
 > > ```
+
 > > Forces_tolerance (float): Forces on atoms in relaxed
+
 > > ```none
 > > configuration should be smaller than this value
 > > (in eV/Angstroms). Default to 0.0001.
 > > ```
+
 > > Stress_tolerance (float): Stresses in relaxed configuration
+
 > > ```none
 > > should be smaller than this value (in GPa). Default to 0.001.
 > > ```
+
 > > Max_step (float): Maximal allowed displacement of atoms and
+
 > > ```none
 > > lattice vectors in Cartesian coordinates (in Angstroms).
 > > Default to 0.5.
 > > ```
+
 > > Min_step (float): Minimal displacement of atoms and
+
 > > ```none
 > > lattice vectors in Cartesian coordinates (in Angstroms).
 > > Default to 1.0e-8.
 > > ```
+
 > > BFGS_Wolfe_C1 (float): Wolfe condition constant on the function
+
 > > ```none
 > > decrease (linesearch stopping criterea). Default to 1.0e-3.
 > > ```
+
 > > BFGS_Wolfe_C2 (float): Wolfe condition constant on the gradient
+
 > > ```none
 > > decrease (linesearch stopping criterea). Default to 0.7.
 > > ```
+
 > > Save_relaxed (str): Filename for output results of relaxation.
+
 > > ```none
 > > No configuration will be saved if not specified.
 > > Default to None.
 > > ```
+
 > > Log (str): Filename to write relaxation log. No logging
+
 > > ```none
 > > if not specified. Default to None.
 > > ```
@@ -710,10 +779,10 @@ Evaluate energies, forces and stresses of structures with trained
 interatomic potentials.
 
 * **Parameters**
-  * **test_structures** (    *[**Structure**]*) – List of Pymatgen Structure Objects.
-  * **test_energies** (    *[**float**]*) – List of DFT-calculated total energies of
+  * **test_structures** (     *[**Structure**]*) – List of Pymatgen Structure Objects.
+  * **test_energies** (     *[**float**]*) – List of DFT-calculated total energies of
     each structure in structures list.
-  * **test_forces** (    *[**np.array**]*) – List of DFT-calculated (m, 3) forces of
+  * **test_forces** (     *[**np.array**]*) – List of DFT-calculated (m, 3) forces of
     each structure with m atoms in structures list. m can be varied
     with each single structure case.
   * **test_stresses** (*list*) – List of DFT-calculated (6, ) viriral stresses
@@ -769,12 +838,12 @@ Read the configuration file.
 Training data with moment tensor method.
 
 * **Parameters**
-  * **train_structures** (    *[**Structure**]*) – The list of Pymatgen Structure object.
+  * **train_structures** (     *[**Structure**]*) – The list of Pymatgen Structure object.
     energies ([float]): The list of total energies of each structure
     in structures list.
-  * **train_energies** (    *[**float**]*) – List of total energies of each structure in
+  * **train_energies** (     *[**float**]*) – List of total energies of each structure in
     structures list.
-  * **train_forces** (    *[**np.array**]*) – List of (m, 3) forces array of each structure
+  * **train_forces** (     *[**np.array**]*) – List of (m, 3) forces array of each structure
     with m atoms in structures list. m can be varied with each
     single structure case.
   * **train_stresses** (*list*) – List of (6, ) virial stresses of each
@@ -1023,10 +1092,10 @@ Evaluate energies, forces and stresses of structures with trained
 machinea learning potentials.
 
 * **Parameters**
-  * **test_structures** (    *[**Structure**]*) – List of Pymatgen Structure Objects.
-  * **test_energies** (    *[**float**]*) – List of DFT-calculated total energies of
+  * **test_structures** (     *[**Structure**]*) – List of Pymatgen Structure Objects.
+  * **test_energies** (     *[**float**]*) – List of DFT-calculated total energies of
     each structure in structures list.
-  * **test_forces** (    *[**np.array**]*) – List of DFT-calculated (m, 3) forces of
+  * **test_forces** (     *[**np.array**]*) – List of DFT-calculated (m, 3) forces of
     each structure with m atoms in structures list. m can be varied
     with each single structure case.
   * **test_stresses** (*list*) – List of DFT-calculated (6, ) viriral stresses
@@ -1053,12 +1122,12 @@ Initialize potentials with parameters file and coefficient file.
 Training data with models.
 
 * **Parameters**
-  * **train_structures** (    *[**Structure**]*) – The list of Pymatgen Structure object.
+  * **train_structures** (     *[**Structure**]*) – The list of Pymatgen Structure object.
     energies ([float]): The list of total energies of each structure
     in structures list.
-  * **train_energies** (    *[**float**]*) – List of total energies of each structure in
+  * **train_energies** (     *[**float**]*) – List of total energies of each structure in
     structures list.
-  * **train_forces** (    *[**np.array**]*) – List of (m, 3) forces array of each
+  * **train_forces** (     *[**np.array**]*) – List of (m, 3) forces array of each
     structure with m atoms in structures list. m can be varied with
     each single structure case.
   * **train_stresses** (*list*) – List of (6, ) virial stresses of each
@@ -1231,10 +1300,10 @@ Evaluate energies, forces and stresses of structures with trained
 interatomic potentials.
 
 * **Parameters**
-  * **test_structures** (    *[**Structure**]*) – List of Pymatgen Structure Objects.
-  * **test_energies** (    *[**float**]*) – List of DFT-calculated total energies of
+  * **test_structures** (     *[**Structure**]*) – List of Pymatgen Structure Objects.
+  * **test_energies** (     *[**float**]*) – List of DFT-calculated total energies of
     each structure in structures list.
-  * **test_forces** (    *[**np.array**]*) – List of DFT-calculated (m, 3) forces of
+  * **test_forces** (     *[**np.array**]*) – List of DFT-calculated (m, 3) forces of
     each structure with m atoms in structures list. m can be varied
     with each single structure case.
   * **test_stresses** (*list*) – List of DFT-calculated (6, ) viriral stresses
@@ -1279,12 +1348,12 @@ Save parameters of the potentials.
 Training data with gaussian process regression.
 
 * **Parameters**
-  * **train_structures** (    *[**Structure**]*) – The list of Pymatgen Structure object.
+  * **train_structures** (     *[**Structure**]*) – The list of Pymatgen Structure object.
     energies ([float]): The list of total energies of each structure
     in structures list.
-  * **train_energies** (    *[**float**]*) – List of total energies of each structure in
+  * **train_energies** (     *[**float**]*) – List of total energies of each structure in
     structures list.
-  * **train_forces** (    *[**np.array**]*) – List of (m, 3) forces array of each structure
+  * **train_forces** (     *[**np.array**]*) – List of (m, 3) forces array of each structure
     with m atoms in structures list. m can be varied with each
     single structure case.
   * **train_stresses** (*list*) – List of (6, ) virial stresses of each
@@ -1572,7 +1641,7 @@ Lattice Constant Relaxation Calculator.
 Calculate the relaxed lattice parameters of a list of structures.
 
 * **Parameters**
-  **structures** (    *[**Structure**]*) – Input structures in a list.
+  **structures** (     *[**Structure**]*) – Input structures in a list.
 * **Returns**
   List of relaxed lattice constants (a, b, c in Å) of the input structures.
 
@@ -1721,10 +1790,10 @@ Evaluate energies, forces and stresses of structures with trained
 interatomic potentials.
 
 * **Parameters**
-  * **test_structures** (    *[**Structure**]*) – List of Pymatgen Structure Objects.
-  * **test_energies** (    *[**float**]*) – List of DFT-calculated total energies of
+  * **test_structures** (     *[**Structure**]*) – List of Pymatgen Structure Objects.
+  * **test_energies** (     *[**float**]*) – List of DFT-calculated total energies of
     each structure in structures list.
-  * **test_forces** (    *[**np.array**]*) – List of DFT-calculated (m, 3) forces of
+  * **test_forces** (     *[**np.array**]*) – List of DFT-calculated (m, 3) forces of
     each structure with m atoms in structures list. m can be varied
     with each single structure case.
   * **test_stresses** (*list*) – List of DFT-calculated (6, ) viriral stresses
@@ -1756,12 +1825,12 @@ Initialize potentials with parameters file.
 Training data with moment tensor method.
 
 * **Parameters**
-  * **train_structures** (    *[**Structure**]*) – The list of Pymatgen Structure object.
+  * **train_structures** (     *[**Structure**]*) – The list of Pymatgen Structure object.
     energies ([float]): The list of total energies of each structure
     in structures list.
-  * **train_energies** (    *[**float**]*) – List of total energies of each structure in
+  * **train_energies** (     *[**float**]*) – List of total energies of each structure in
     structures list.
-  * **train_forces** (    *[**np.array**]*) – List of (m, 3) forces array of each structure
+  * **train_forces** (     *[**np.array**]*) – List of (m, 3) forces array of each structure
     with m atoms in structures list. m can be varied with each single
     structure case.
   * **train_stresses** (*list*) – List of (6, ) virial stresses of each structure
@@ -1846,14 +1915,19 @@ select_log (str): Name of file (or standard output stream stdout/stderr) for
 > 0: If Ab-initio models is not required.
 > 1: Used if driver provides EFS data with configurations.
 > 2: Use embedded Lennard-Jones pair potentials.
+
 > > r_min (float): Distance to minimum of pair function (in Angstroms).
+
 > > ```none
 > > Default to 2.0.
 > > ```
+
 > > scale (float): Value of pair function in minimum (in eV).
+
 > > ```none
 > > Default to 1.0.
 > > ```
+
 > > cutoff (float): Cutoff radius (in Angstroms). Default to 5.0.
 > > 3: Use DFT models by VASP. Linking via files exchange.
 > > POSCAR (str): Relative path of POSCAR file.
@@ -1871,95 +1945,137 @@ MLIP (str): MTP.
 > load_from (str): Potential filename.
 > Cacluate_EFS (bool): Whether to perform EFS calculation by MTP.
 > Fit (bool): Whether to perform MTP learning.
+
 > > Save (str): Output MTP file name (for trained MTP).
 > > Energy_equation_weight (float): Weight for energy equation in
+
 > > > fitting procedure. Default to 1.0.
 > > > Forces_equation_weight (float): Weight for forces equations in
 > > ```none
 > > fitting procedure. Default to 0.001.
 > > ```
+
 > > Stress_equation_weight (float): Weight for stresses equations in
+
 > > ```none
 > > fitting procedure.  Default to 0.1.
 > > ```
+
 > > Relative_forces_weight (float): If greater than zero, large forces
+
 > > ```none
 > > will be fitted less accurate than small. Default to 0.0.
 > > ```
+
 > > Fit_log (str): File to write fitting log. No logging if not specified.
+
 > > ```none
 > > Default to None.
 > > ```
+
 > Select (bool): Whether to activate active learning. Default to False.
+
 > > Site_E_weight (float): Weight for site energy equations in
+
 > > ```none
 > > selection procedure. Default to 1.0.
 > > ```
+
 > > Energy_weight (float): Weight for energy equation in
+
 > > ```none
 > > selection procedure. Default to 0.0.
 > > ```
+
 > > Forces_weight (float): Weight for forces equations in
+
 > > ```none
 > > selection procedure. Default to 0.0.
 > > ```
+
 > > Stress_weight (float): Weight for stresses equations in
+
 > > ```none
 > > selection procedure. Default to 0.0.
 > > ```
+
 > > Threshold_slct (float): Selection threshold - maximum
+
 > > ```none
 > > allowed extrapolation level. Default to 0.1.
 > > ```
+
 > > Save_TS (str): Filename where selected configurations
+
 > > ```none
 > > will be saved. No configuration saving if not specified.
 > > Default to None.
 > > ```
+
 > > Save_state (str): Filename where state of the selection
+
 > > ```none
 > > will be saved. No saving if not specified. Default to None.
 > > ```
+
 > > Load_state (str): Filename where state of the selection
+
 > > ```none
 > > will be loaded. No saving if not specified. Default to None.
 > > ```
+
 > > Select_log (str): File to write fitting log. No logging
+
 > > ```none
 > > if not specified. Default to None.
 > > ```
+
 > LOFT (bool): Whether to perform learning on the fly. Default to False
+
 > > EFSviaMTP (bool): Works only on LOFT regime. If True,
+
 > > ```none
 > > only MTP-calculated EFS will be passed to driver, else
 > > pass to driver ab-initio EFS while LOTF when learning occurs.
 > > ```
+
 > > Log (str): Filename to write log of learning on the fly process.
+
 > > ```none
 > > No logging if not specified. Default to None.
 > > ```
+
 > Check_errors (bool): If True, comparison and accumulation of
+
 > ```none
 > error statistics for EFS calculated by ab-initio models and MTP.
 > Default to False.
 > ```
+
 > ```none
 > Log (str): Filename to write log of learning on the fly process.
 > ```
+
 > ```none
 >     No logging if not specified. Default to None.
 > ```
+
 > Write_cfgs (bool): File for writing all processed configurations.
+
 > ```none
 > No configuration recording if not specified. Default to None.
 > ```
+
 > ```none
 > Skip_N (int): The number of configurations to skip while writing.
 > ```
+
 > ```none
 >     Default to 0.
 > ```
+
 > Log (str): Filename to write MLIP log. No logging if not specified.
+
 > ```none
 > Default to None.
 > ```
@@ -1968,56 +2084,78 @@ Driver (int): Defines the configuration driver. Default to 1.
 
 > 0: No driver or external MD driver.
 > 1: Read configurations from database file.
+
 > > Database_filename (str): Configuration file name.
 > > Max_count (int): Maximal number of configurations to read.
 > > Log (str): Filename to write reading log. No logging
+
 > > > if not specified. Default to None.
 > > > 2: Embedded algorithm for relaxation.
 > > > Pressure (float): External pressure (in GPa).
 > > ```none
 > > If not zero enthalpy is minimized. Default to 0.0.
 > > ```
+
 > > Iteration_limit (int): Maximal number of iteration of
+
 > > ```none
 > > the relaxation process. Default to 500.
 > > ```
+
 > > Min_dist (float): Minimal interatomic distance constraint
+
 > > ```none
 > > (in Angstroms). Default to 1.0.
 > > ```
+
 > > Forces_tolerance (float): Forces on atoms in relaxed
+
 > > ```none
 > > configuration should be smaller than this value
 > > (in eV/Angstroms). Default to 0.0001.
 > > ```
+
 > > Stress_tolerance (float): Stresses in relaxed configuration
+
 > > ```none
 > > should be smaller than this value (in GPa). Default to 0.001.
 > > ```
+
 > > Max_step (float): Maximal allowed displacement of atoms and
+
 > > ```none
 > > lattice vectors in Cartesian coordinates (in Angstroms).
 > > Default to 0.5.
 > > ```
+
 > > Min_step (float): Minimal displacement of atoms and
+
 > > ```none
 > > lattice vectors in Cartesian coordinates (in Angstroms).
 > > Default to 1.0e-8.
 > > ```
+
 > > BFGS_Wolfe_C1 (float): Wolfe condition constant on the function
+
 > > ```none
 > > decrease (linesearch stopping criterea). Default to 1.0e-3.
 > > ```
+
 > > BFGS_Wolfe_C2 (float): Wolfe condition constant on the gradient
+
 > > ```none
 > > decrease (linesearch stopping criterea). Default to 0.7.
 > > ```
+
 > > Save_relaxed (str): Filename for output results of relaxation.
+
 > > ```none
 > > No configuration will be saved if not specified.
 > > Default to None.
 > > ```
+
 > > Log (str): Filename to write relaxation log. No logging
+
 > > ```none
 > > if not specified. Default to None.
 > > ```
@@ -2075,10 +2213,10 @@ Evaluate energies, forces and stresses of structures with trained
 interatomic potentials.
 
 * **Parameters**
-  * **test_structures** (    *[**Structure**]*) – List of Pymatgen Structure Objects.
-  * **test_energies** (    *[**float**]*) – List of DFT-calculated total energies of
+  * **test_structures** (     *[**Structure**]*) – List of Pymatgen Structure Objects.
+  * **test_energies** (     *[**float**]*) – List of DFT-calculated total energies of
     each structure in structures list.
-  * **test_forces** (    *[**np.array**]*) – List of DFT-calculated (m, 3) forces of
+  * **test_forces** (     *[**np.array**]*) – List of DFT-calculated (m, 3) forces of
     each structure with m atoms in structures list. m can be varied
     with each single structure case.
   * **test_stresses** (*list*) – List of DFT-calculated (6, ) viriral stresses
@@ -2134,12 +2272,12 @@ Read the configuration file.
 Training data with moment tensor method.
 
 * **Parameters**
-  * **train_structures** (    *[**Structure**]*) – The list of Pymatgen Structure object.
+  * **train_structures** (     *[**Structure**]*) – The list of Pymatgen Structure object.
     energies ([float]): The list of total energies of each structure
     in structures list.
-  * **train_energies** (    *[**float**]*) – List of total energies of each structure in
+  * **train_energies** (     *[**float**]*) – List of total energies of each structure in
     structures list.
-  * **train_forces** (    *[**np.array**]*) – List of (m, 3) forces array of each structure
+  * **train_forces** (     *[**np.array**]*) – List of (m, 3) forces array of each structure
     with m atoms in structures list. m can be varied with each
     single structure case.
   * **train_stresses** (*list*) – List of (6, ) virial stresses of each
@@ -2354,10 +2492,10 @@ Evaluate energies, forces and stresses of structures with trained
 machinea learning potentials.
 
 * **Parameters**
-  * **test_structures** (    *[**Structure**]*) – List of Pymatgen Structure Objects.
-  * **test_energies** (    *[**float**]*) – List of DFT-calculated total energies of
+  * **test_structures** (     *[**Structure**]*) – List of Pymatgen Structure Objects.
+  * **test_energies** (     *[**float**]*) – List of DFT-calculated total energies of
     each structure in structures list.
-  * **test_forces** (    *[**np.array**]*) – List of DFT-calculated (m, 3) forces of
+  * **test_forces** (     *[**np.array**]*) – List of DFT-calculated (m, 3) forces of
     each structure with m atoms in structures list. m can be varied
     with each single structure case.
   * **test_stresses** (*list*) – List of DFT-calculated (6, ) viriral stresses
@@ -2384,12 +2522,12 @@ Initialize potentials with parameters file and coefficient file.
 Training data with models.
 
 * **Parameters**
-  * **train_structures** (    *[**Structure**]*) – The list of Pymatgen Structure object.
+  * **train_structures** (     *[**Structure**]*) – The list of Pymatgen Structure object.
     energies ([float]): The list of total energies of each structure
     in structures list.
-  * **train_energies** (    *[**float**]*) – List of total energies of each structure in
+  * **train_energies** (     *[**float**]*) – List of total energies of each structure in
     structures list.
-  * **train_forces** (    *[**np.array**]*) – List of (m, 3) forces array of each
+  * **train_forces** (     *[**np.array**]*) – List of (m, 3) forces array of each
     structure with m atoms in structures list. m can be varied with
     each single structure case.
   * **train_stresses** (*list*) – List of (6, ) virial stresses of each

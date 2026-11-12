@@ -152,9 +152,11 @@ This method takes all possible combinations of features
 and optimize the following loss function
 
 > 1/2 \* mean((y-x @ beta)\*\*2) + lambd \*
+
 > ```default
 > |
 > ```
+
 > beta|_0.
 
 ### select(x: np.ndarray, y: np.ndarray, options: dict | None = None, n_job: int = 1)
@@ -225,21 +227,21 @@ Generate string representation for output
 
 Returns: name of the output
 
-### *property* is_binary(    *: boo* )
+### *property* is_binary(     *: boo* )
 
 True if the operator takes two arguments else False.
 
 * **Type**
   Returns
 
-### *property* is_commutative(    *: boo* )
+### *property* is_commutative(     *: boo* )
 
 True if the operator is commutative else False.
 
 * **Type**
   Returns
 
-### *property* is_unary(    *: boo* )
+### *property* is_unary(     *: boo* )
 
 True if the operator takes one argument else False.
 
@@ -403,21 +405,21 @@ Generate string representation for output
 
 Returns: name of the output
 
-#### *property* is_binary(    *: boo* )
+#### *property* is_binary(     *: boo* )
 
 True if the operator takes two arguments else False.
 
 * **Type**
   Returns
 
-#### *property* is_commutative(    *: boo* )
+#### *property* is_commutative(     *: boo* )
 
 True if the operator is commutative else False.
 
 * **Type**
   Returns
 
-#### *property* is_unary(    *: boo* )
+#### *property* is_unary(     *: boo* )
 
 True if the operator takes one argument else False.
 
@@ -684,9 +686,11 @@ This method takes all possible combinations of features
 and optimize the following loss function
 
 > 1/2 \* mean((y-x @ beta)\*\*2) + lambd \*
+
 > ```default
 > |
 > ```
+
 > beta|_0.
 
 #### select(x: np.ndarray, y: np.ndarray, options: dict | None = None, n_job: int = 1)
