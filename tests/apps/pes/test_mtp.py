@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+import re
 import shutil
 import tempfile
 import unittest
@@ -20,6 +21,7 @@ from maml.apps.pes._mtp import MTini_params, feed, min_interatomic_distance
 CWD = os.getcwd()
 test_datapool = loadfn(os.path.join(os.path.abspath(os.path.dirname(__file__)), "datapool.json"))
 config_file = os.path.join(os.path.abspath(os.path.dirname(__file__)), "MTP", "fitted.mtp")
+config_file_4 = os.path.join(os.path.abspath(os.path.dirname(__file__)), "MTP", "fitted_4.mtp")
 
 
 class MTPotentialTest(unittest.TestCase):
@@ -435,6 +437,46 @@ def test_train_missing_fitted_mtp(fake_mlp_bin, train_data):
     assert "something went wrong" in str(excinfo.value)
 
 
+def test_from_config_keeps_order_and_warns():
+    with pytest.warns(UserWarning, match="differ from the order MTPotential.train uses"):
+        mtp = MTPotential.from_config(config_file_4, elements=["Nb", "O", "Li", "Cl"])
+    assert mtp.elements == ["Nb", "O", "Li", "Cl"]
+    assert mtp.param["species_coeffs"] is not None
+
+
+@pytest.mark.parametrize("elements", [["Li", "Nb", "Cl", "O"], ("Li", "Nb", "Cl", "O")])
+def test_from_config_training_order_no_warning(recwarn, elements):
+    mtp = MTPotential.from_config(config_file_4, elements=elements)
+    assert mtp.elements == ["Li", "Nb", "Cl", "O"]
+    assert not [w for w in recwarn if issubclass(w.category, UserWarning)]
+
+
+def test_from_config_default_element_ordering(recwarn):
+    mtp = MTPotential.from_config(config_file_4, elements=["Nb", "O", "Li", "Cl"], default_element_ordering=True)
+    assert mtp.elements == ["Li", "Nb", "Cl", "O"]
+    assert not [w for w in recwarn if issubclass(w.category, UserWarning)]
+
+
+@pytest.mark.parametrize(
+    ("elements", "match"),
+    [
+        (["Li", "Nb", "Cl"], "species_count = 4, but 3 elements"),
+        (["Li", "Li", "Nb", "Cl", "O"], "duplicates"),
+        (["Li", "Li", "Nb", "Cl"], "duplicates"),
+    ],
+)
+def test_from_config_invalid_elements(elements, match):
+    with pytest.raises(ValueError, match=match):
+        MTPotential.from_config(config_file_4, elements=elements)
+
+
+def test_from_config_missing_species_count(in_tmp):
+    text = Path(config_file).read_text()
+    Path("no_count.mtp").write_text("\n".join(line for line in text.splitlines() if "species_count" not in line))
+    with pytest.raises(ValueError, match="no species_count"):
+        MTPotential.from_config("no_count.mtp", elements=["Mo"])
+
+
 def test_from_config_nan(in_tmp):
     _nan_fitted_mtp("nan.mtp")
     with pytest.raises(ValueError, match="non-finite"):
@@ -552,10 +594,31 @@ def _parse_mlip3_argv(argv):
     return args, opts
 
 
-def _mlip3_trained_potential():
-    """The fitted test potential as MLIP-3 would save it: coefficients in scientific notation
-    followed by the selection state."""
-    lines = Path(config_file).read_text().rstrip("\n").split("\n")
+def _relabel(text, types):
+    """Replace the 0..N-1 radial_coeffs labels of an .mtp file with the atom types `types`."""
+    return re.sub(
+        r"^(\s*)(\d+)-(\d+)$",
+        lambda m: f"{m.group(1)}{types[int(m.group(2))]}-{types[int(m.group(3))]}",
+        text,
+        flags=re.M,
+    )
+
+
+def _cfg_types(cfg_text):
+    """Atom types in a .cfgs file, sorted (the species order MLIP-3 trains with)."""
+    types = set()
+    for block in re.findall(r"AtomData:.*?\n(.*?)\n Energy", cfg_text, re.S):
+        types.update(int(line.split()[1]) for line in block.split("\n"))
+    return sorted(types)
+
+
+def _mlip3_trained_potential(types=None):
+    """The fitted test potential as MLIP-3 would save it: coefficients in scientific notation,
+    radial_coeffs labelled with the training atom types, followed by the selection state."""
+    text = Path(config_file).read_text()
+    if types is not None:
+        text = _relabel(text, types)
+    lines = text.rstrip("\n").split("\n")
     for i in (-2, -1):
         key, value = lines[i].split(" = ")
         numbers = [float(x) for x in value.strip("{}").split(",")]
@@ -581,7 +644,11 @@ def fake_mlp3(argv, strict=True):
         for key in ("init_random", "no_mindist_update", "skip_preinit"):
             if key in opts:
                 assert opts[key] in MLIP3_BOOLS, opts[key]
-        Path(opts.get("save_to") or args[0]).write_bytes(_mlip3_trained_potential())
+        # MLIP-3 sorts the training atom types and uses them as the species labels. The test
+        # potential has one species, so the training set must have one atom type.
+        types = _cfg_types(Path(args[1]).read_text())
+        assert len(types) == 1, types
+        Path(opts.get("save_to") or args[0]).write_bytes(_mlip3_trained_potential(types))
         return 0, "training complete\n", ""
     if command == "calculate_efs":
         if len(args) != 2:
@@ -628,8 +695,12 @@ def test_train_mlip3(fake_mlp_bin, train_data):
     assert "max_dist = 4.500000" in unfitted
     # MLIP-3 needs PlusStress blocks, the format its cfg reader shares with MLIP-2.
     assert "PlusStress:  xx" in calls.file("train.cfgs")
+    # MLIP-3 gets atomic numbers as atom types and records them in the fitted potential.
+    assert _cfg_types(calls.file("train.cfgs")) == [42]
+    assert mtp.atomic_number_types
+    assert mtp.elements == ["Mo"]
     expected = MTPotential.from_config(config_file, ["Mo"], version="mlip-2").param
-    assert mtp.param["safe"] == expected["safe"]
+    assert mtp.param["safe"] == _relabel("\n".join(expected["safe"]), [42]).split("\n")
     assert not any("MVS" in line for line in mtp.param["safe"])
     np.testing.assert_allclose(mtp.param["species_coeffs"], expected["species_coeffs"], rtol=1e-14)
     np.testing.assert_allclose(mtp.param["moment_coeffs"], expected["moment_coeffs"], rtol=1e-14)
@@ -693,6 +764,95 @@ def test_from_config_mlip3_trained_file(in_tmp):
     assert mtp.version == "mlip-3"
     np.testing.assert_allclose(mtp.param["species_coeffs"], [-9.118920883237898], rtol=1e-14)
     assert len(mtp.param["moment_coeffs"]) == 9
+
+
+def test_train_mlip2_relative_types(fake_mlp_bin, train_data):
+    calls = fake_mlp_bin()
+    mtp = MTPotential(version="mlip-2")
+    mtp.train(*train_data)
+    assert not mtp.atomic_number_types
+    assert _cfg_types(calls.file("train.cfgs")) == [0]
+
+
+def test_train_mlip3_atomic_number_limit(fake_mlp_bin, train_data):
+    calls = fake_mlp_bin(fake_mlp3)
+    structures = [s.copy() for s in train_data[0]]
+    for s in structures:
+        s.replace_species({"Mo": "Fm"})
+    with pytest.raises(ValueError, match="atomic numbers up to 99"):
+        MTPotential(version="mlip-3").train(structures, *train_data[1:])
+    assert calls == []
+
+
+def test_train_mlip3_unexpected_labels(fake_mlp_bin, train_data):
+    def handler(argv):
+        if argv[1] == "train":
+            Path("08g_fitted.mtp").write_bytes(_mlip3_trained_potential())
+            return 0, "training complete\n", ""
+        return fake_mlp3(argv)
+
+    fake_mlp_bin(handler)
+    with pytest.raises(RuntimeError, match=r"has species types \[0\], but the training set contains \['Mo'\]"):
+        MTPotential(version="mlip-3").train(*train_data)
+
+
+def _labelled_4(path, types=(3, 41, 17, 8)):
+    """fitted_4.mtp (Li, Nb, Cl, O) as fitted on atomic-number atom types."""
+    Path(path).write_text(_relabel(Path(config_file_4).read_text(), list(types)))
+    return path
+
+
+@pytest.mark.parametrize("elements", [None, ["Li", "Nb", "Cl", "O"], ["O", "Cl", "Nb", "Li"]])
+def test_from_config_reads_elements(in_tmp, recwarn, elements):
+    mtp = MTPotential.from_config(_labelled_4("z.mtp"), elements=elements)
+    # The file order wins; with atomic-number types the given order does not matter.
+    assert mtp.elements == ["Li", "Nb", "Cl", "O"]
+    assert mtp.atomic_number_types
+    assert not [w for w in recwarn if issubclass(w.category, UserWarning)]
+
+
+def test_from_config_reads_elements_mlip2(in_tmp):
+    mtp = MTPotential.from_config(_labelled_4("z.mtp"), version="mlip-2")
+    assert mtp.elements == ["Li", "Nb", "Cl", "O"]
+    # MLIP-2 ignores the labels and indexes species by position.
+    assert not mtp.atomic_number_types
+    assert mtp._atom_type("Cl") == 2
+
+
+def test_from_config_elements_mismatch(in_tmp):
+    with pytest.raises(ValueError, match=r"atomic numbers \[3, 41, 17, 8\] \(\['Li', 'Nb', 'Cl', 'O'\]\)"):
+        MTPotential.from_config(_labelled_4("z.mtp"), elements=["Li", "Nb", "Cl", "S"])
+
+
+def test_from_config_requires_elements_without_labels():
+    with pytest.raises(ValueError, match=r"numbers its species 0\.\.3 and does not record their elements"):
+        MTPotential.from_config(config_file_4)
+
+
+def test_write_read_cfgs_atomic_number_types(in_tmp, datapool):
+    mtp = MTPotential.from_config(_labelled_4("z.mtp"))
+    structure = datapool[0]["structure"].copy()
+    structure.replace_species({"Mo": "Nb"})
+    structure[0] = "O"
+    pool = [{"structure": structure, "outputs": datapool[0]["outputs"]}]
+    text = Path(mtp.write_cfg("test.cfgs", pool)).read_text()
+    assert _cfg_types(text) == [8, 41]
+    data_pool, _ = mtp.read_cfgs("test.cfgs")
+    assert Structure.from_dict(data_pool[0]["structure"]).composition == structure.composition
+    other = MTPotential.from_config(_labelled_4("other.mtp", types=(3, 42, 17, 8)))
+    with pytest.raises(ValueError, match="contains atom type 41"):
+        other.read_cfgs("test.cfgs")
+
+
+def test_evaluate_mlip3_atomic_number_types(fake_mlp_bin, train_data):
+    calls = fake_mlp_bin(fake_mlp3)
+    Path("mo.mtp").write_bytes(_mlip3_trained_potential([42]))
+    mtp = MTPotential.from_config("mo.mtp")
+    assert mtp.elements == ["Mo"]
+    df_orig, df_predict = mtp.evaluate(*train_data)
+    assert _cfg_types(calls.file("original.cfgs")) == [42]
+    is_energy = df_orig["dtype"] == "energy"
+    np.testing.assert_allclose(df_predict[is_energy]["y_orig"], df_orig[is_energy]["y_orig"] + 3.0, atol=1e-6)
 
 
 def test_mlip3_lammps_not_implemented(in_tmp):
@@ -764,6 +924,11 @@ def test_real_mlip3_train_evaluate(in_tmp, notebook_data):
 
     def force_components(df):
         return df[df["dtype"] == "force"]["y_orig"].to_numpy()
+
+    # The fitted potential records its elements as atomic-number species labels.
+    mtp._write_mtp("trained.mtp")
+    assert MTPotential.from_config("trained.mtp").elements == mtp.elements
+    assert sorted(mtp.elements) == sorted({str(el) for s in structures for el in s.species})
 
     e_pred, f_pred = per_atom_energy(df_pred), force_components(df_pred)
     assert np.isfinite(e_pred).all()

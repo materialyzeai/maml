@@ -11,6 +11,7 @@ import os
 import re
 import shutil
 import subprocess
+import warnings
 from collections import OrderedDict
 from shutil import which
 
@@ -18,7 +19,8 @@ import numpy as np
 from monty.io import zopen
 from monty.serialization import loadfn
 from monty.tempfile import ScratchDir
-from pymatgen.core import Lattice, Structure
+from pymatgen.core import Element, Lattice, Structure
+from pymatgen.core.periodic_table import get_el_sp
 
 from maml.utils import check_structures_forces_stresses, convert_docs, pool_from
 
@@ -145,6 +147,33 @@ def _load_mtp_param(filename) -> OrderedDict:
     return param
 
 
+_RADIAL_COEFFS_LABEL = re.compile(r"^\s*(\d+)-(\d+)\s*$")
+
+
+def _species_types(param) -> list[int]:
+    """
+    Atom types of the species of a fitted potential, in species order.
+
+    Each radial_coeffs block of an .mtp file is labelled "a-b" with the atom types of a species
+    pair. MLIP-3 orders species by these types and maps configuration atom types to species
+    through them, so a potential trained on atomic-number types (e.g. "3-41") records its
+    elements. Types 0..N-1 (what MLIP-2 writes, and maml before atomic-number types) do not.
+
+    Args:
+        param (OrderedDict): Parameters from _load_mtp_param.
+
+    Returns:
+        list[int]: The atom types in species order; empty if the file has no radial_coeffs.
+    """
+    types: list[int] = []
+    for line in param["safe"]:
+        if match := _RADIAL_COEFFS_LABEL.match(line):
+            for atom_type in map(int, match.groups()):
+                if atom_type not in types:
+                    types.append(atom_type)
+    return types
+
+
 def feed(attribute, kwargs, dictionary, tab="\t"):
     r"""
     Args:
@@ -194,7 +223,19 @@ class MTPotential(LammpsPotential):
         self.vasp_stress_order = ["xx", "yy", "zz", "xy", "yz", "xz"]
         self.param = param if param else None
         self.elements = None
+        # True if configuration atom types are atomic numbers (MLIP-3 only), not indices into elements.
+        self.atomic_number_types = False
         self.version = version
+
+    def _atom_type(self, specie) -> int:
+        """Atom type written to .cfgs files for a species."""
+        if getattr(self, "atomic_number_types", False):
+            return get_el_sp(specie).Z
+        return self.elements.index(str(specie))
+
+    def _type_to_element(self) -> dict[int, str]:
+        """Map from .cfgs atom types to element symbols."""
+        return {self._atom_type(element): element for element in self.elements}
 
     def _line_up(self, structure, energy, forces, virial_stress):
         """
@@ -244,7 +285,7 @@ class MTPotential(LammpsPotential):
                 lines.append(
                     format_float.format(
                         i + 1,
-                        self.elements.index(str(site.specie)),
+                        self._atom_type(site.specie),
                         *site.coords,
                         *force,
                     )
@@ -640,6 +681,7 @@ class MTPotential(LammpsPotential):
         if not self.elements:
             raise ValueError("No species given.")
 
+        type_to_element = self._type_to_element()
         data_pool = []
         with zopen(filename, "rt") as f:
             lines = f.read()
@@ -658,7 +700,12 @@ class MTPotential(LammpsPotential):
             lattice = Lattice(np.array(list(map(formatify, lattice_str.split("\n")))))
             position_str = position_pattern.findall(block)[0]
             position = np.array(list(map(formatify, position_str.split("\n"))))
-            species = np.array(self.elements)[position[:, 1].astype(np.int64)]
+            try:
+                species = [type_to_element[atom_type] for atom_type in position[:, 1].astype(int)]
+            except KeyError as exc:
+                raise ValueError(
+                    f"{filename} contains atom type {exc.args[0]}, which is not one of {type_to_element}."
+                ) from exc
             forces = position[:, 5:8].tolist()
             position = position[:, 2:5]
             energy_str = energy_pattern.findall(block)[0]
@@ -761,6 +808,12 @@ class MTPotential(LammpsPotential):
         train_pool = pool_from(train_structures, train_energies, train_forces, train_stresses)
         elements = sorted(set(itertools.chain(*[struct.species for struct in train_structures])))
         self.elements = [str(element) for element in elements]
+        # MLIP-3 maps atom types to species by value and records them in the fitted potential, so
+        # atomic-number types make the element order recoverable by from_config.
+        self.atomic_number_types = self.version == "mlip-3"
+        if self.atomic_number_types and (heavy := [el for el in self.elements if get_el_sp(el).Z > 99]):
+            # MLIP-3's .mtp reader parses at most two digits for the first type of a pair label.
+            raise ValueError(f"MLIP-3 potentials support atomic numbers up to 99, got {heavy}.")
 
         atoms_filename = "train.cfgs"
 
@@ -852,6 +905,14 @@ class MTPotential(LammpsPotential):
                     "for inconsistent energies/forces, and try other weights or a different "
                     "max_dist/radial_basis_size.\n" + _format_mlp_output(stdout, stderr)
                 ) from exc
+            if self.atomic_number_types:
+                types = _species_types(self.param)
+                if sorted(types) != sorted(get_el_sp(el).Z for el in self.elements):
+                    raise RuntimeError(
+                        f"The fitted potential {save_fitted_mtp} has species types {types}, but the training "
+                        f"set contains {self.elements}."
+                    )
+                self.elements = [Element.from_Z(atom_type).symbol for atom_type in types]
         return rc
 
     def write_param(self, fitted_mtp="fitted.mtp", **kwargs):
@@ -954,23 +1015,81 @@ class MTPotential(LammpsPotential):
         return df_orig, df_predict
 
     @staticmethod
-    def from_config(filename, elements, version=None):
+    def from_config(filename, elements=None, version=None, default_element_ordering=False):
         """
         Initialize potentials with parameters file.
+
+        A potential fitted by MLIP-3 on atomic-number atom types (what MTPotential.train writes
+        for version="mlip-3") records its elements in the radial_coeffs labels, and they are read
+        from the file. Other potentials number their species 0..species_count-1 without element
+        names, so `elements` must be given in the order the potential was fitted with.
+        MTPotential.train sorts elements by Pauling electronegativity for MLIP-2; potentials
+        fitted elsewhere may not.
 
         Args:
             filename (str): The file storing parameters of potentials, filename should
                 ends with ".mtp". Potentials trained by MLIP-2 or MLIP-3 can be read.
-            elements (list): The list of elements.
+            elements (list): The list of elements, in the species order of the potential. Optional
+                if the file records its elements; if given, it must contain the same elements.
             version (str): The version of mlip package, see MTPotential. Default is "mlip-3".
+            default_element_ordering (bool): For a file that does not record its elements: if
+                True, `elements` is reordered by Pauling electronegativity, the order
+                MTPotential.train uses for MLIP-2. If False (default), the given order is kept
+                and a warning is emitted when it differs from that order.
 
         Returns:
             MTPotential
 
         Raises:
-            ValueError: If the file contains NaN/inf values or cannot be parsed.
+            ValueError: If the file contains NaN/inf values or cannot be parsed, if `elements`
+                is missing for a file that does not record its elements, contains duplicates,
+                or does not match the species in the file.
         """
-        mtp = MTPotential(param=_load_mtp_param(filename), version=version)
+        param = _load_mtp_param(filename)
+        if elements is not None:
+            elements = [str(element) for element in elements]
+            if len(set(elements)) != len(elements):
+                raise ValueError(f"elements contains duplicates: {elements}.")
+        num_species = next(
+            (int(line.split("=", 1)[1]) for line in param["safe"] if line.strip().startswith("species_count")),
+            None,
+        )
+        if num_species is None:
+            raise ValueError(f"{filename} has no species_count entry.")
+
+        mtp = MTPotential(param=param, version=version)
+        types = _species_types(param)
+        # Atomic numbers start at 1, so a 0 type means the species are numbered 0..N-1.
+        if types and 0 not in types:
+            file_elements = [Element.from_Z(atom_type).symbol for atom_type in types]
+            if elements is not None and set(elements) != set(file_elements):
+                raise ValueError(
+                    f"{filename} labels its species with atomic numbers {types} ({file_elements}), "
+                    f"but elements {elements} were given."
+                )
+            mtp.elements = file_elements
+            # MLIP-2 ignores the labels and indexes species by position, so it keeps 0..N-1 types.
+            mtp.atomic_number_types = mtp.version == "mlip-3"
+            return mtp
+
+        if elements is None:
+            raise ValueError(
+                f"{filename} numbers its species 0..{num_species - 1} and does not record their elements. "
+                "Pass elements in the order the potential was fitted with."
+            )
+        if len(elements) != num_species:
+            raise ValueError(f"{filename} has species_count = {num_species}, but {len(elements)} elements were given.")
+        ordered_elements = [str(element) for element in sorted(Element(element) for element in elements)]
+        if default_element_ordering:
+            elements = ordered_elements
+        elif elements != ordered_elements:
+            warnings.warn(
+                f"elements {elements} differ from the order MTPotential.train uses, {ordered_elements} "
+                "(sorted by Pauling electronegativity). The given order is kept, which is correct only if "
+                "the potential was fitted with it. Pass default_element_ordering=True to reorder.",
+                UserWarning,
+                stacklevel=2,
+            )
         mtp.elements = elements
 
         return mtp
