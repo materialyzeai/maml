@@ -54,6 +54,11 @@ MLIP3_WEIGHT_SCALING = {
 # MLIP-3 appends its active-learning state (partly binary) to a trained potential after this marker.
 _MLIP3_SELECTION_MARKER = b"\n#MVS_v"
 
+MLIP3_LAMMPS_URL = "https://gitlab.com/ivannovikov/interface-lammps-mlip-3"
+# A pair_style mlip argument of MLIP-3's LAMMPS interface: key=value, with no whitespace and one "=".
+_MLIP3_PAIR_STYLE_KEY = re.compile(r"^[A-Za-z_][\w:]*$")
+_MLIP3_PAIR_STYLE_VALUE = re.compile(r"^[^\s=]+$")
+
 
 def _output_tail(output: bytes | str | None, n_lines: int = 20) -> str:
     """Return the last ``n_lines`` non-empty lines of a process output stream."""
@@ -147,7 +152,25 @@ def _load_mtp_param(filename) -> OrderedDict:
     return param
 
 
+def _load_selection_state(filename) -> bytes | None:
+    """
+    Read the MLIP-3 active-learning (selection) state appended to a trained potential.
+
+    Args:
+        filename (str): The .mtp/.almtp file.
+
+    Returns:
+        bytes | None: The state from the "#MVS_v" marker (including the preceding newline) to
+            the end of the file, or None if the file has no selection state.
+    """
+    with open(filename, "rb") as f:
+        data = f.read()
+    start = data.find(_MLIP3_SELECTION_MARKER)
+    return data[start:] if start >= 0 else None
+
+
 _RADIAL_COEFFS_LABEL = re.compile(r"^\s*(\d+)-(\d+)\s*$")
+_RADIAL_COEFFS_LABEL_LINE = re.compile(r"^(\s*)(\d+)-(\d+)(\s*)$")
 
 
 def _species_types(param) -> list[int]:
@@ -211,9 +234,9 @@ class MTPotential(LammpsPotential):
             name (str): Name of force field.
             param (dict): The parameter configuration of potentials.
             version (str): The version of mlip package: "mlip-3" (default), "mlip-2" or
-                "mlip-dev". With "mlip-3", train() and evaluate() are supported, but the LAMMPS
-                based methods (write_param, write_ini and everything built on them) are not, since
-                MLIP-3's LAMMPS interface is a separate package with its own input format.
+                "mlip-dev". LAMMPS calculations with "mlip-3" need LAMMPS built with MLIP-3's
+                LAMMPS interface (interface-lammps-mlip-3), which takes its settings on the
+                pair_style line instead of an mlip.ini file; see write_param.
         """
         version = version if version else "mlip-3"
         if version not in SUPPORTED_VERSIONS:
@@ -225,6 +248,8 @@ class MTPotential(LammpsPotential):
         self.elements = None
         # True if configuration atom types are atomic numbers (MLIP-3 only), not indices into elements.
         self.atomic_number_types = False
+        # MLIP-3 active-learning state of the potential, needed for extrapolation control in LAMMPS.
+        self.selection_state: bytes | None = None
         self.version = version
 
     def _atom_type(self, specie) -> int:
@@ -341,7 +366,7 @@ class MTPotential(LammpsPotential):
     def write_ini(self, mtp_filename="fitted.mtp", **kwargs):
         """
         Write mlip.ini file for mlip packages of version mlip-2 or mlip-dev. Not supported for
-        mlip-3, whose LAMMPS interface is a separate package.
+        mlip-3, whose LAMMPS interface has no mlip.ini; use write_param instead.
         Supported keyword arguments are parallel with options stated in the mlip manuals.
         Please refer to https://mlip.skoltech.ru.
 
@@ -500,9 +525,8 @@ class MTPotential(LammpsPotential):
         """
         if getattr(self, "version", None) == "mlip-3":
             raise NotImplementedError(
-                "mlip.ini/LAMMPS input is not supported for version='mlip-3': MLIP-3's LAMMPS "
-                "interface (interface-lammps-mlip-3) is a separate package and has not been "
-                "integrated into maml."
+                "mlip.ini is not used with version='mlip-3': MLIP-3's LAMMPS interface "
+                "(interface-lammps-mlip-3) takes its settings on the pair_style line. Use write_param."
             )
         lines = []
         if not hasattr(self, "version") or self.version == "mlip-2":
@@ -905,6 +929,7 @@ class MTPotential(LammpsPotential):
                     "for inconsistent energies/forces, and try other weights or a different "
                     "max_dist/radial_basis_size.\n" + _format_mlp_output(stdout, stderr)
                 ) from exc
+            self.selection_state = _load_selection_state(save_fitted_mtp)
             if self.atomic_number_types:
                 types = _species_types(self.param)
                 if sorted(types) != sorted(get_el_sp(el).Z for el in self.elements):
@@ -919,26 +944,113 @@ class MTPotential(LammpsPotential):
         """
         Write fitted mtp parameter file to perform lammps calculation.
 
+        For version="mlip-2" and "mlip-dev", the settings go to an mlip.ini file (see write_ini)
+        and the pair style is "pair_style mlip mlip.ini".
+
+        For version="mlip-3", LAMMPS must be built with MLIP-3's LAMMPS interface
+        (https://gitlab.com/ivannovikov/interface-lammps-mlip-3), whose settings are key=value
+        arguments of pair_style: "pair_style mlip load_from=fitted.mtp [key=value ...]". The
+        interface maps LAMMPS atom type t to the species labelled t-1 in the potential, so the
+        potential is written with its species relabelled to maml's LAMMPS atom type order
+        (elements sorted by Pauling electronegativity, as in pymatgen's LammpsData). A LAMMPS
+        data file written elsewhere must number its atom types in that order. The coefficients,
+        and the active-learning state if the potential has one, are unchanged.
+
         Args:
-            fitted_mtp (str): Filename to store xml formatted parameters.
-            **kwargs: pass to write_ini method.
+            fitted_mtp (str): Filename to store the fitted potential.
+            **kwargs: For mlip-2 and mlip-dev, passed to write_ini. For mlip-3, extra pair_style
+                arguments of the LAMMPS interface, e.g. extrapolation_control=True,
+                threshold_save=2, threshold_break=10, save_extrapolative_to="preselected.cfg".
+                Booleans are written as true/false. Extrapolation control needs the
+                active-learning state that MLIP-3 appends to a trained potential, which
+                MTPotential.train and from_config keep.
+
+        Returns:
+            list[str]: The pair_style and pair_coeff commands.
 
         Raises:
-            NotImplementedError: For version="mlip-3", whose LAMMPS interface is not supported.
+            RuntimeError: If no parameters have been fitted or loaded.
+            ValueError: For mlip-3, if the elements are unknown or do not match the species of the
+                potential, a pair_style argument is invalid, or extrapolation control is requested
+                for a potential without an active-learning state.
         """
         if getattr(self, "version", None) == "mlip-3":
-            raise NotImplementedError(
-                "LAMMPS calculations are not supported for version='mlip-3': MLIP-3's LAMMPS "
-                "interface (interface-lammps-mlip-3) is a separate package and has not been "
-                "integrated into maml. train() and evaluate() work with mlip-3."
-            )
+            return self._write_param_mlip3(fitted_mtp, **kwargs)
         self._write_mtp(fitted_mtp)
         ini_file = self.write_ini(mtp_filename=fitted_mtp, load_from=fitted_mtp, Calculate_EFS=True, **kwargs)
         return [self.pair_style.format(ini_file), self.pair_coeff]
 
-    def _write_mtp(self, fitted_mtp):
-        """Write the fitted parameters to an .mtp file."""
+    def lammps_elements(self) -> list[str]:
+        """
+        Elements in the order of maml's LAMMPS atom types: atom type i + 1 is element i.
+
+        This is the order pymatgen's LammpsData.from_structure gives the potential's elements
+        (sorted by Pauling electronegativity), which the maml LAMMPS calculators use.
+
+        Returns:
+            list[str]: Element symbols.
+        """
+        if not self.elements:
+            raise ValueError("No species given.")
+        return [str(element) for element in sorted(Element(element) for element in self.elements)]
+
+    def _write_param_mlip3(self, fitted_mtp, **kwargs) -> list[str]:
+        """write_param for MLIP-3's LAMMPS interface; see write_param."""
         if not self.param:
+            raise RuntimeError("The parameters should be provided.")
+        args = [f"load_from={fitted_mtp}"]
+        for key, value in kwargs.items():
+            if key == "load_from":
+                raise ValueError("load_from is set from fitted_mtp.")
+            text = str(value).lower() if isinstance(value, bool) else str(value)
+            if not _MLIP3_PAIR_STYLE_KEY.match(key) or not _MLIP3_PAIR_STYLE_VALUE.match(text):
+                raise ValueError(
+                    f"Invalid pair_style mlip argument {key}={text}: keys and values must be non-empty "
+                    "and contain no whitespace or '='."
+                )
+            args.append(f"{key}={text}")
+        if not _MLIP3_PAIR_STYLE_VALUE.match(str(fitted_mtp)):
+            raise ValueError(f"fitted_mtp {fitted_mtp!r} must not contain whitespace or '='.")
+        extrapolation_control = kwargs.get("extrapolation_control", False)
+        if str(extrapolation_control).lower() == "true" and not getattr(self, "selection_state", None):
+            raise ValueError(
+                "extrapolation_control needs the active-learning state that MLIP-3 appends to a trained "
+                "potential, and this potential has none. Train it with MTPotential(version='mlip-3').train() "
+                "or load a file trained by MLIP-3 with MTPotential.from_config."
+            )
+
+        lammps_types = {element: i for i, element in enumerate(self.lammps_elements())}
+        type_to_element = self._type_to_element()
+        species_types = _species_types(self.param)
+        if unknown := [t for t in species_types if t not in type_to_element]:
+            raise ValueError(
+                f"The potential has species types {species_types}, but types {unknown} are not among the "
+                f"types {type_to_element} of elements {self.elements}."
+            )
+        labels = {atom_type: lammps_types[element] for atom_type, element in type_to_element.items()}
+
+        def relabel(line: str) -> str:
+            if not (match := _RADIAL_COEFFS_LABEL_LINE.match(line)):
+                return line
+            lead, type1, type2, trail = match.groups()
+            return f"{lead}{labels[int(type1)]}-{labels[int(type2)]}{trail}"
+
+        param = OrderedDict(self.param)
+        param["safe"] = [relabel(line) for line in self.param["safe"]]
+        self._write_mtp(fitted_mtp, param=param, selection_state=getattr(self, "selection_state", None))
+        return [self.pair_style.format(" ".join(args)), self.pair_coeff]
+
+    def _write_mtp(self, fitted_mtp, param=None, selection_state=None):
+        """
+        Write the fitted parameters to an .mtp file.
+
+        Args:
+            fitted_mtp (str): Output filename.
+            param (OrderedDict): Parameters to write. Defaults to self.param.
+            selection_state (bytes): MLIP-3 active-learning state appended after the parameters.
+        """
+        param = param if param is not None else self.param
+        if not param:
             raise RuntimeError("The parameters should be provided.")
         lines = [
             (
@@ -946,10 +1058,12 @@ class MTPotential(LammpsPotential):
                 if key != "safe"
                 else "\n".join(value)
             )
-            for key, value in self.param.items()
+            for key, value in param.items()
         ]
-        with open(fitted_mtp, "w") as f:
-            f.write("\n".join(lines))
+        with open(fitted_mtp, "wb") as f:
+            f.write("\n".join(lines).encode())
+            if selection_state:
+                f.write(selection_state)
 
     def evaluate(self, test_structures, test_energies, test_forces, test_stresses=None, **kwargs):
         """
@@ -1003,8 +1117,12 @@ class MTPotential(LammpsPotential):
                 stdout = p.communicate()[0]
                 rc = p.returncode
             _check_returncode("mlp", rc, stdout)
-            if not os.path.exists(predict_file):
-                predict_file = f"{predict_file}_0"
+            # mlip-dev writes predict.cfgs_0. An MPI build of MLIP-3 appends the rank to
+            # --output_filename (predict.cfgs.0); mlp runs here without mpirun, so as a single rank.
+            predict_file = next(
+                (f for f in (predict_file, f"{predict_file}.0", f"{predict_file}_0") if os.path.exists(f)),
+                predict_file,
+            )
             if not os.path.exists(predict_file):
                 # mlp exits with 0 even for unknown commands, e.g. MLIP-2's calc-efs under MLIP-3.
                 raise RuntimeError(
@@ -1058,6 +1176,7 @@ class MTPotential(LammpsPotential):
             raise ValueError(f"{filename} has no species_count entry.")
 
         mtp = MTPotential(param=param, version=version)
+        mtp.selection_state = _load_selection_state(filename)
         types = _species_types(param)
         # Atomic numbers start at 1, so a 0 type means the species are numbered 0..N-1.
         if types and 0 not in types:

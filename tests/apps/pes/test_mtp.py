@@ -2,6 +2,7 @@
 # Distributed under the terms of the BSD License.
 from __future__ import annotations
 
+import copy
 import os
 import re
 import shutil
@@ -15,8 +16,8 @@ import pytest
 from monty.serialization import loadfn
 from pymatgen.core import Lattice, Structure
 
-from maml.apps.pes import MTPotential, _mtp
-from maml.apps.pes._mtp import MTini_params, feed, min_interatomic_distance
+from maml.apps.pes import MTPotential, _lammps, _mtp
+from maml.apps.pes._mtp import MTini_params, _load_mtp_param, feed, min_interatomic_distance
 
 CWD = os.getcwd()
 test_datapool = loadfn(os.path.join(os.path.abspath(os.path.dirname(__file__)), "datapool.json"))
@@ -758,6 +759,21 @@ def test_evaluate_mlip3(fake_mlp_bin, train_data):
     np.testing.assert_allclose(df_predict[~is_energy]["y_orig"], df_orig[~is_energy]["y_orig"])
 
 
+def test_evaluate_mlip3_mpi_build(fake_mlp_bin, train_data):
+    # An MPI build of MLIP-3 appends the rank to --output_filename (mpi.fnm_ending = ".<rank>").
+    def handler(argv):
+        result = fake_mlp3(argv)
+        if argv[1] == "calculate_efs":
+            Path("predict.cfgs").rename("predict.cfgs.0")
+        return result
+
+    fake_mlp_bin(handler)
+    mtp = MTPotential.from_config(config_file, elements=["Mo"], version="mlip-3")
+    df_orig, df_predict = mtp.evaluate(*train_data)
+    is_energy = df_orig["dtype"] == "energy"
+    np.testing.assert_allclose(df_predict[is_energy]["y_orig"], df_orig[is_energy]["y_orig"] + 3.0, atol=1e-6)
+
+
 def test_from_config_mlip3_trained_file(in_tmp):
     Path("trained.almtp").write_bytes(_mlip3_trained_potential())
     mtp = MTPotential.from_config("trained.almtp", elements=["Mo"], version="mlip-3")
@@ -855,13 +871,244 @@ def test_evaluate_mlip3_atomic_number_types(fake_mlp_bin, train_data):
     np.testing.assert_allclose(df_predict[is_energy]["y_orig"], df_orig[is_energy]["y_orig"] + 3.0, atol=1e-6)
 
 
-def test_mlip3_lammps_not_implemented(in_tmp):
+def test_write_ini_mlip3_not_implemented(in_tmp):
     mtp = MTPotential.from_config(config_file, elements=["Mo"], version="mlip-3")
-    with pytest.raises(NotImplementedError, match="interface-lammps-mlip-3"):
-        mtp.write_param()
-    with pytest.raises(NotImplementedError, match="interface-lammps-mlip-3"):
+    with pytest.raises(NotImplementedError, match=r"pair_style line\. Use write_param"):
         mtp.write_ini()
+    assert not Path("mlip.ini").exists()
+
+
+# ---------------------------------------------------------------------------
+# MLIP-3 LAMMPS interface (interface-lammps-mlip-3, commit 68f02dd9, built against MLIP-3 commit
+# 7fe598d). The emulation below follows its source code (LAMMPS/USER-MLIP/pair_MLIP.cpp, MLIP-3's
+# src/external/interface.cpp and MLMTPR::Load/type_from_atomic_number); no binary was run.
+# ---------------------------------------------------------------------------
+
+
+def _parse_mlip3_pair_style(in_file):
+    """Settings of `pair_style mlip key=value ...` as PairMLIP::settings builds them."""
+    lines = [line.split() for line in Path(in_file).read_text().splitlines()]
+    (pair_style,) = [line for line in lines if line[:2] == ["pair_style", "mlip"]]
+    (pair_coeff,) = [line for line in lines if line[:1] == ["pair_coeff"]]
+    assert pair_coeff[1:] == ["*", "*"]
+    settings = {"mlip": "true", "calculate_efs": "true"}
+    for arg in pair_style[2:]:
+        assert arg.count("=") == 1, arg
+        key, value = arg.split("=")
+        settings["mlip:load_from" if key == "load_from" else key] = value
+    return settings
+
+
+def _mlip3_species_labels(potential):
+    """MLMTPR::Load: species labels (atomic_numbers) in order of first appearance."""
+    text = Path(potential).read_bytes().split(b"\n#MVS_v", 1)[0].decode()
+    labels = []
+    for line in text.splitlines():
+        if match := re.match(r"^\s*(\d+)-(\d+)\s*$", line):
+            for label in map(int, match.groups()):
+                if label not in labels:
+                    labels.append(label)
+    return labels
+
+
+def make_mlip3_lammps(species_elements):
+    """Fake LAMMPS with MLIP-3's pair_style mlip. `species_elements[k]` is the element the fitted
+    potential's species k was trained on. Checks that every atom is evaluated with its own species."""
+    from pymatgen.io.lammps.data import LammpsData
+
+    def handler(args):
+        settings = _parse_mlip3_pair_style(args[-1])
+        labels = _mlip3_species_labels(settings["mlip:load_from"])
+        assert len(labels) == len(species_elements)
+        data = LammpsData.from_file("data.static", atom_style="charge")
+        for atom_type, site in zip(data.atoms["type"], data.structure, strict=True):
+            # interface.cpp passes type - 1; type_from_atomic_number throws if the label is absent.
+            assert atom_type - 1 in labels, f"Atomic number {atom_type - 1} is not present in the MTP potential!"
+            assert species_elements[labels.index(atom_type - 1)] == str(site.specie)
+        n_atoms = len(data.structure)
+        Path("energy.txt").write_text(f"{-1.5 * n_atoms}\n")
+        header = f"ITEM: TIMESTEP\n0\nITEM: NUMBER OF ATOMS\n{n_atoms}\nITEM: BOX BOUNDS pp pp pp\n0 1\n0 1\n0 1\n"
+        Path("force.dump").write_text(header + "ITEM: ATOMS\n" + "0.0 0.0 0.0\n" * n_atoms)
+        Path("stress.txt").write_text("1 2 3 0 0 0\n")
+
+    return handler
+
+
+@pytest.fixture
+def li_nb_cl_o():
+    return Structure(
+        Lattice.cubic(4.0), ["O", "Li", "Cl", "Nb"], [[0, 0, 0], [0.5, 0.5, 0.5], [0.5, 0, 0], [0, 0.5, 0.5]]
+    )
+
+
+def _radial_labels(path):
+    return re.findall(r"^\s*(\d+-\d+)\s*$", Path(path).read_text(), flags=re.M)
+
+
+@pytest.mark.parametrize(
+    ("make_mtp", "species_elements"),
+    [
+        # Fitted on atomic-number types, in an order that is not the LAMMPS type order.
+        (lambda: MTPotential.from_config(_labelled_4("z.mtp", types=(8, 41, 3, 17))), ["O", "Nb", "Li", "Cl"]),
+        # Fitted on 0..N-1 types with a non-electronegativity element order.
+        (
+            lambda: MTPotential.from_config(config_file_4, elements=["Nb", "O", "Li", "Cl"], version="mlip-3"),
+            ["Nb", "O", "Li", "Cl"],
+        ),
+        # Fitted by MLIP-2 in the electronegativity order.
+        (
+            lambda: MTPotential.from_config(config_file_4, elements=["Li", "Nb", "Cl", "O"], version="mlip-3"),
+            ["Li", "Nb", "Cl", "O"],
+        ),
+    ],
+)
+def test_write_param_mlip3(in_tmp, recwarn, make_mtp, species_elements):
+    mtp = make_mtp()
+    before = copy.deepcopy(mtp.param)
+    assert mtp.lammps_elements() == ["Li", "Nb", "Cl", "O"]
+    pair_style, pair_coeff = mtp.write_param(fitted_mtp="pot.almtp")
+    assert pair_style == "pair_style        mlip load_from=pot.almtp"
+    assert pair_coeff == "pair_coeff        * *"
+    assert not Path("mlip.ini").exists()
+    # Species k is labelled with the LAMMPS type (minus one) of its element.
+    lammps_type = {el: i for i, el in enumerate(mtp.lammps_elements())}
+    assert _mlip3_species_labels("pot.almtp") == [lammps_type[el] for el in species_elements]
+    # Only the labels change: same blocks, same coefficients.
+    written = _load_mtp_param("pot.almtp")
+    assert written["species_coeffs"] == mtp.param["species_coeffs"]
+    assert written["moment_coeffs"] == mtp.param["moment_coeffs"]
+    assert len(_radial_labels("pot.almtp")) == 16
+    original = [line for line in mtp.param["safe"] if not re.match(r"^\s*\d+-\d+\s*$", line)]
+    assert [line for line in written["safe"] if not re.match(r"^\s*\d+-\d+\s*$", line)] == original
+    # The potential itself is not modified, so evaluate() keeps using its own atom types.
+    assert mtp.param == before
+
+
+def test_write_param_mlip3_single_species(in_tmp):
+    mtp = MTPotential.from_config(config_file, elements=["Mo"], version="mlip-3")
+    assert mtp.selection_state is None
+    assert mtp.write_param()[0] == "pair_style        mlip load_from=fitted.mtp"
+    assert Path("fitted.mtp").read_text().rstrip("\n") == Path(config_file).read_text().rstrip("\n")
+
+
+def test_write_param_mlip3_extrapolation_control(in_tmp):
+    Path("trained.almtp").write_bytes(_mlip3_trained_potential([42]))
+    mtp = MTPotential.from_config("trained.almtp")
+    assert mtp.selection_state == MLIP3_SELECTION_STATE
+    pair_style, _ = mtp.write_param(
+        fitted_mtp="pot.almtp",
+        extrapolation_control=True,
+        threshold_save=2,
+        threshold_break=10.0,
+        save_extrapolative_to="preselected.cfg",
+    )
+    assert pair_style.split()[2:] == [
+        "load_from=pot.almtp",
+        "extrapolation_control=true",
+        "threshold_save=2",
+        "threshold_break=10.0",
+        "save_extrapolative_to=preselected.cfg",
+    ]
+    settings = _parse_mlip3_pair_style_line(pair_style)
+    assert settings["mlip:load_from"] == "pot.almtp"
+    data = Path("pot.almtp").read_bytes()
+    # Relabelled to LAMMPS type 1 (label 0); the active-learning state follows the parameters verbatim.
+    assert _mlip3_species_labels("pot.almtp") == [0]
+    assert data.endswith(MLIP3_SELECTION_STATE)
+    assert data.count(b"#MVS_v") == 1
+    assert _load_mtp_param("pot.almtp")["moment_coeffs"] == mtp.param["moment_coeffs"]
+
+
+def _parse_mlip3_pair_style_line(pair_style):
+    Path("in.test").write_text(f"{pair_style}\npair_coeff * *\n")
+    return _parse_mlip3_pair_style("in.test")
+
+
+def test_train_mlip3_keeps_selection_state(fake_mlp_bin, train_data):
+    fake_mlp_bin(fake_mlp3)
+    mtp = MTPotential(version="mlip-3")
+    mtp.train(*train_data)
+    assert mtp.selection_state == MLIP3_SELECTION_STATE
+    pair_style, _ = mtp.write_param(extrapolation_control=True)
+    assert "extrapolation_control=true" in pair_style
+    assert Path("fitted.mtp").read_bytes().endswith(MLIP3_SELECTION_STATE)
+
+
+@pytest.mark.parametrize(
+    ("kwargs", "match"),
+    [
+        ({"extrapolation_control": True}, "has none"),
+        ({"extrapolation_control": "TRUE"}, "has none"),
+        ({"load_from": "other.mtp"}, "load_from is set from fitted_mtp"),
+        ({"save_extrapolative_to": "my file.cfg"}, "Invalid pair_style mlip argument"),
+        ({"save_extrapolative_to": ""}, "Invalid pair_style mlip argument"),
+        ({"threshold_save": "a=b"}, "Invalid pair_style mlip argument"),
+    ],
+)
+def test_write_param_mlip3_invalid(in_tmp, kwargs, match):
+    mtp = MTPotential.from_config(config_file, elements=["Mo"], version="mlip-3")
+    with pytest.raises(ValueError, match=match):
+        mtp.write_param(**kwargs)
     assert not Path("fitted.mtp").exists()
+
+
+def test_write_param_mlip3_invalid_filename(in_tmp):
+    mtp = MTPotential.from_config(config_file, elements=["Mo"], version="mlip-3")
+    with pytest.raises(ValueError, match="must not contain whitespace"):
+        mtp.write_param(fitted_mtp="my pot.mtp")
+
+
+def test_write_param_mlip3_types_mismatch(in_tmp):
+    mtp = MTPotential.from_config(_labelled_4("z.mtp"))
+    mtp.elements = ["Li", "Nb", "Cl", "S"]
+    with pytest.raises(ValueError, match=r"types \[8\] are not among the types"):
+        mtp.write_param()
+
+
+def test_write_param_mlip3_no_param():
+    with pytest.raises(RuntimeError, match="parameters should be provided"):
+        MTPotential(version="mlip-3").write_param()
+
+
+def test_write_param_mlip3_no_elements(in_tmp):
+    mtp = MTPotential(param=_load_mtp_param(config_file), version="mlip-3")
+    with pytest.raises(ValueError, match="No species given"):
+        mtp.lammps_elements()
+    with pytest.raises(ValueError, match="No species given"):
+        mtp.write_param()
+    assert not Path("fitted.mtp").exists()
+
+
+@pytest.mark.parametrize(
+    ("make_mtp", "species_elements"),
+    [
+        (lambda: MTPotential.from_config(_labelled_4("z.mtp", types=(8, 41, 3, 17))), ["O", "Nb", "Li", "Cl"]),
+        (
+            lambda: MTPotential.from_config(config_file_4, elements=["Nb", "O", "Li", "Cl"], version="mlip-3"),
+            ["Nb", "O", "Li", "Cl"],
+        ),
+    ],
+)
+def test_predict_efs_mlip3(mock_binaries, in_tmp, recwarn, li_nb_cl_o, make_mtp, species_elements):
+    mtp = make_mtp()
+    calls = mock_binaries(_lammps, make_mlip3_lammps(species_elements))
+    energy, forces, stress = mtp.predict_efs(li_nb_cl_o)
+    assert calls == [["/fake/bin/lmp_serial", "-in", "in.efs"]]
+    assert energy == pytest.approx(-6.0)
+    assert forces.shape == (4, 3)
+    assert len(stress) == 6
+
+
+def test_predict_efs_mlip3_unrelabelled_fails(mock_binaries, in_tmp, li_nb_cl_o):
+    # Without relabelling, the atomic-number labels are wrong for LAMMPS: LAMMPS types 1..4 are looked
+    # up as labels 0..3. Here type 4 (O) silently becomes label 3, the Li species, and types 1-3 crash.
+    mtp = MTPotential.from_config(_labelled_4("z.mtp", types=(8, 41, 3, 17)))
+    mock_binaries(_lammps, make_mlip3_lammps(["O", "Nb", "Li", "Cl"]))
+    mtp._write_param_mlip3 = lambda fitted_mtp, **kwargs: (
+        mtp._write_mtp(fitted_mtp) or [f"pair_style mlip load_from={fitted_mtp}", "pair_coeff * *"]
+    )
+    with pytest.raises(AssertionError, match=r"is not present in the MTP potential|assert 'Li' == 'O'"):
+        mtp.predict_efs(li_nb_cl_o)
 
 
 def test_mlip2_version_with_mlip3_binary(fake_mlp_bin, train_data):
@@ -945,3 +1192,64 @@ def test_real_mlip3_rejects_mlip2_version(in_tmp, notebook_data):
     structures, energies, forces, _ = (x[:2] for x in notebook_data)
     with pytest.raises(RuntimeError, match='version="mlip-3"'):
         MTPotential(version="mlip-2").train(structures, energies, forces, None, max_dist=5, max_iter=5)
+
+
+def _lammps_with_mlip3() -> bool:
+    """Whether the default LAMMPS executable has MLIP-3's `pair_style mlip`."""
+    import subprocess
+
+    lmp = _lammps.get_default_lmp_exe()
+    if not lmp:
+        return False
+    try:
+        out = subprocess.run([lmp, "-h"], capture_output=True, text=True, check=False, timeout=60).stdout
+    except (OSError, subprocess.TimeoutExpired):
+        return False
+    return re.search(r"\bmlip\b", out) is not None
+
+
+requires_mlip3_lammps = pytest.mark.skipif(
+    not (_real_mlip3() and _lammps_with_mlip3()),
+    reason="real MLIP-3 mlp and LAMMPS with interface-lammps-mlip-3 not on PATH",
+)
+
+
+@requires_mlip3_lammps
+def test_real_mlip3_lammps_matches_mlp(in_tmp, notebook_data):
+    structures, energies, forces, _ = notebook_data
+    # Se has a smaller atomic number but a larger electronegativity than Mo, so MLIP-3's species order
+    # (sorted atom types) differs from the LAMMPS atom type order. The fit quality is irrelevant here.
+    structures = [s.copy() for s in structures]
+    for s in structures:
+        s.replace_species({"Ni": "Se"})
+    mtp = MTPotential()
+    mtp.train(structures, energies, forces, None, max_dist=5, stress_weight=0, max_iter=50)
+    assert mtp.elements == ["Se", "Mo"]
+    assert mtp.lammps_elements() == ["Mo", "Se"]
+    assert mtp.selection_state
+
+    structure = structures[0]
+    _, df_mlp = mtp.evaluate([structure], [energies[0]], [forces[0]])
+    e_mlp = df_mlp[df_mlp["dtype"] == "energy"]["y_orig"].item()
+    f_mlp = df_mlp[df_mlp["dtype"] == "force"]["y_orig"].to_numpy().reshape(-1, 3)
+
+    energy, lmp_forces, stress = mtp.predict_efs(structure)
+    # Swapped species would give eV-scale errors. The residual (~1e-4 eV/A) comes from the inputs: the
+    # .cfgs file and the LAMMPS data file both store coordinates to 1e-6 A (the latter in a rotated
+    # frame), and mlp prints forces to 1e-6 eV/A.
+    assert np.abs(f_mlp).max() > 0.1
+    assert energy == pytest.approx(e_mlp, abs=1e-3)
+    np.testing.assert_allclose(lmp_forces, f_mlp, atol=1e-3)
+    assert len(stress) == 6
+
+    # Extrapolation control loads the active-learning state kept from training. ScratchDir does not
+    # copy the working directory, so the potential is passed by absolute path.
+    ff_settings = mtp.write_param(
+        fitted_mtp=str(Path("pot.almtp").resolve()),
+        extrapolation_control=True,
+        threshold_save=2,
+        threshold_break=100,
+    )
+    ((energy_ec, forces_ec, _),) = _lammps.EnergyForceStress(ff_settings).calculate([structure])
+    assert energy_ec == pytest.approx(energy, abs=1e-8)
+    np.testing.assert_allclose(forces_ec, lmp_forces, atol=1e-8)
