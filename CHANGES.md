@@ -8,6 +8,9 @@
   relabelled to maml's LAMMPS atom type order (`lammps_elements()`), so `predict_efs()` and the LAMMPS calculators
   work. The active-learning state of MLIP-3 potentials is kept, so `write_param(extrapolation_control=True, ...)`
   enables extrapolation grading in LAMMPS.
+* `MTPotential.train(al_mode=...)` for MLIP-3 (`mlp train --al_mode`), `"nbh"` (by neighborhood) by default
+  instead of MLIP-3's `"cfg"`. With `"cfg"`, LAMMPS extrapolation control stops MD of periodic cells at the first
+  step, since grades of configurations close to the training set can be in the thousands.
 
 ### Bug fixes
 * `MTPotential.evaluate()` works with an MPI build of MLIP-3, which writes `mlp calculate_efs` output to
