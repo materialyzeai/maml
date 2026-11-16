@@ -689,6 +689,7 @@ def test_train_mlip3(fake_mlp_bin, train_data):
             "--tolerance=0.001",
             "--weight_scaling=1",
             "--weight_scaling_forces=0",
+            "--al_mode=nbh",
         ]
     ]
     unfitted = calls.file("08g.mtp")
@@ -722,9 +723,26 @@ def test_train_mlip3_option_mapping(fake_mlp_bin, train_data, weighting, init_pa
         assert arg in calls[0]
 
 
+@pytest.mark.parametrize("al_mode", ["nbh", "cfg"])
+def test_train_mlip3_al_mode(fake_mlp_bin, train_data, al_mode):
+    calls = fake_mlp_bin(fake_mlp3)
+    MTPotential(version="mlip-3").train(*train_data, al_mode=al_mode)
+    assert [arg for arg in calls[0] if arg.startswith("--al_mode")] == [f"--al_mode={al_mode}"]
+
+
+def test_train_mlip2_ignores_al_mode(fake_mlp_bin, train_data):
+    calls = fake_mlp_bin()
+    MTPotential(version="mlip-2").train(*train_data, al_mode="cfg")
+    assert not any(arg.startswith("--al_mode") for call in calls for arg in call)
+
+
 @pytest.mark.parametrize(
     ("kwargs", "match"),
-    [({"weighting": "atoms"}, "weighting must be one of"), ({"init_params": "zeros"}, "init_params must be")],
+    [
+        ({"weighting": "atoms"}, "weighting must be one of"),
+        ({"init_params": "zeros"}, "init_params must be"),
+        ({"al_mode": "neighborhood"}, "al_mode must be one of"),
+    ],
 )
 def test_train_mlip3_invalid_options(fake_mlp_bin, train_data, kwargs, match):
     calls = fake_mlp_bin(fake_mlp3)
