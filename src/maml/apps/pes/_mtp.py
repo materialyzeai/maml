@@ -54,6 +54,9 @@ MLIP3_WEIGHT_SCALING = {
 # MLIP-3 appends its active-learning state (partly binary) to a trained potential after this marker.
 _MLIP3_SELECTION_MARKER = b"\n#MVS_v"
 
+# MLIP-3 active-learning modes of `mlp train --al_mode`: by configuration or by atomic neighborhood.
+MLIP3_AL_MODES = ("cfg", "nbh")
+
 MLIP3_LAMMPS_URL = "https://gitlab.com/ivannovikov/interface-lammps-mlip-3"
 # A pair_style mlip argument of MLIP-3's LAMMPS interface: key=value, with no whitespace and one "=".
 _MLIP3_PAIR_STYLE_KEY = re.compile(r"^[A-Za-z_][\w:]*$")
@@ -777,6 +780,7 @@ class MTPotential(LammpsPotential):
         scale_by_force=0,
         bfgs_conv_tol=1e-3,
         weighting="vibration",
+        al_mode="nbh",
     ):
         """
         Training data with moment tensor method.
@@ -811,6 +815,12 @@ class MTPotential(LammpsPotential):
             weighting (str): How to weight configuration with different sizes relative to each other.
                 Choose from "vibrations", "molecules" and "structures". (MLIP-3:
                 --weight_scaling/--weight_scaling_forces = 1/0, 0/0 and 2/1 respectively.)
+            al_mode (str): MLIP-3 only (--al_mode): how the active-learning state stored in the
+                fitted potential selects, "nbh" (by atomic neighborhood, default) or "cfg" (by
+                configuration, MLIP-3's own default). It sets the extrapolation grades used by
+                write_param(extrapolation_control=True). Use "nbh" for MD of periodic cells: with
+                "cfg", grades of cells close to, or even in, the training set can be in the
+                thousands, so LAMMPS stops at the first threshold_break check.
 
         With version="mlip-3" the remaining options map to MLIP-3's underscored flags
         (--energy_weight, --force_weight, --stress_weight, --scale_by_force), the fitted potential
@@ -867,6 +877,8 @@ class MTPotential(LammpsPotential):
                     raise ValueError(f"init_params must be 'same' or 'random', got {init_params!r}.")
                 if weighting not in MLIP3_WEIGHT_SCALING:
                     raise ValueError(f"weighting must be one of {sorted(MLIP3_WEIGHT_SCALING)}, got {weighting!r}.")
+                if al_mode not in MLIP3_AL_MODES:
+                    raise ValueError(f"al_mode must be one of {list(MLIP3_AL_MODES)}, got {al_mode!r}.")
                 weight_scaling, weight_scaling_forces = MLIP3_WEIGHT_SCALING[weighting]
                 cmd = [
                     "mlp",
@@ -883,6 +895,7 @@ class MTPotential(LammpsPotential):
                     f"--tolerance={bfgs_conv_tol}",
                     f"--weight_scaling={weight_scaling}",
                     f"--weight_scaling_forces={weight_scaling_forces}",
+                    f"--al_mode={al_mode}",
                 ]
             else:
                 cmd = [
