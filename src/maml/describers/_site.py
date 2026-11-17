@@ -321,7 +321,7 @@ class BPSymmetryFunctions(BaseDescriber):
 
         for atom_idx, neighbors in enumerate(all_neighbors):
             center = structure[atom_idx].coords
-            site_symmfuncs: list[np.ndarray] = []
+            site_symmfuncs: list[float] = []
             sorted_neighbors = sorted(neighbors, key=lambda neighbor: neighbor.species_string)
             temp_dict = {
                 element: [(neighbor.coords, neighbor.nn_distance) for neighbor in group]
