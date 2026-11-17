@@ -22,7 +22,7 @@ jobs:
       max-parallel: 20
       matrix:
         os: [ubuntu-latest]
-        python-version: ["3.11", "3.12"]
+        python-version: ["3.12"]
 
     runs-on: ${{ matrix.os }}
     env:
@@ -64,7 +64,7 @@ jobs:
       run: |
         uv run pytest tests --cov=maml --cov-report=xml
     - name: Upload coverage reports to Codecov
-      if: matrix.os == 'ubuntu-latest' && matrix.python-version == '3.11'
+      if: matrix.os == 'ubuntu-latest' && matrix.python-version == '3.12'
       uses: codecov/codecov-action@v6
       with:
         token: ${{ secrets.CODECOV_TOKEN }}
@@ -87,7 +87,7 @@ jobs:
     - name: Install uv with python version.
       uses: astral-sh/setup-uv@v8.1.0
       with:
-        python-version: "3.11"
+        python-version: "3.12"
         enable-cache: true
         cache-dependency-glob: "uv.lock"
     - name: Install dependencies
@@ -141,7 +141,7 @@ jobs:
       - name: Install uv with python version.
         uses: astral-sh/setup-uv@v8.1.0
         with:
-          python-version: "3.11"
+          python-version: "3.12"
           enable-cache: true
           cache-dependency-glob: "uv.lock"
       - run: |

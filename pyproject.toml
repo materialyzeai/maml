@@ -1,7 +1,7 @@
 [build-system]
 requires = [
     # don't pin version for as-yet-unreleased versions of Python
-    "numpy>=1.22; python_version>='3.10'",
+    "numpy>=1.22",
     "setuptools>=43.0.0"
 ]
 build-backend = "setuptools.build_meta"
@@ -16,7 +16,7 @@ authors = [
 ]
 description = "MAterials Machine Learning (maml) is a machine learning library for materials science."
 readme = "README.md"
-requires-python = ">=3.11"
+requires-python = ">=3.12"
 keywords = [
     "materials",
     "interatomic potential",
@@ -34,7 +34,6 @@ classifiers = [
     "Intended Audience :: Science/Research",
     "License :: OSI Approved :: BSD License",
     "Operating System :: OS Independent",
-    "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3",
     "Topic :: Scientific/Engineering :: Chemistry",
