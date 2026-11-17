@@ -1,6 +1,6 @@
 # Change log
 
-## Unreleased
+## v2026.11.17
 
 ### Breaking changes
 * Python >= 3.12 is required.
