@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+### Breaking changes
+* Python >= 3.12 is required.
+
 ### New features
 * `MTPotential` supports MLIP-3's LAMMPS interface (`interface-lammps-mlip-3`). With `version="mlip-3"`,
   `write_param()` returns `pair_style mlip load_from=... [key=value ...]` and writes the potential with its species
