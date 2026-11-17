@@ -1,5 +1,24 @@
 # Change log
 
+## v2026.11.17
+
+### Breaking changes
+* Python >= 3.12 is required.
+
+### New features
+* `MTPotential` supports MLIP-3's LAMMPS interface (`interface-lammps-mlip-3`). With `version="mlip-3"`,
+  `write_param()` returns `pair_style mlip load_from=... [key=value ...]` and writes the potential with its species
+  relabelled to maml's LAMMPS atom type order (`lammps_elements()`), so `predict_efs()` and the LAMMPS calculators
+  work. The active-learning state of MLIP-3 potentials is kept, so `write_param(extrapolation_control=True, ...)`
+  enables extrapolation grading in LAMMPS.
+* `MTPotential.train(al_mode=...)` for MLIP-3 (`mlp train --al_mode`), `"nbh"` (by neighborhood) by default
+  instead of MLIP-3's `"cfg"`. With `"cfg"`, LAMMPS extrapolation control stops MD of periodic cells at the first
+  step, since grades of configurations close to the training set can be in the thousands.
+
+### Bug fixes
+* `MTPotential.evaluate()` works with an MPI build of MLIP-3, which writes `mlp calculate_efs` output to
+  `<output_filename>.0`.
+
 ## v2026.11.12
 
 ### Breaking changes

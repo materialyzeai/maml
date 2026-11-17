@@ -52,7 +52,7 @@ dependencies = [
     "matgl>=4.1.1",
     "fastcluster>=1.3.0",
 ]
-version = "2026.11.12"
+version = "2026.11.17"
 
 [project.optional-dependencies]
 symbolic = ["cvxpy"]
